@@ -1,0 +1,13 @@
+{
+  "name": "booking-system",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-10",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "booking-system",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
