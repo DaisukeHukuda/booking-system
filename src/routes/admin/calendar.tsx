@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { getAvailability } from '../../core/availability';
-import { createBooking, cancelBooking, changeBooking } from '../../core/booking';
-import type { Bindings, PaymentMethod, SlotAvailability } from '../../types';
-import { Layout, STATUS_LABELS, STATUS_CLASSES, PAYMENT_LABELS } from './ui';
+import { createBooking, cancelBooking, changeBooking, approveBooking, denyBooking } from '../../core/booking';
+import type { Bindings, BookingStatus, PaymentMethod, SlotAvailability } from '../../types';
+import { Layout, STATUS_LABELS, STATUS_CLASSES, BOOKING_STATUS_LABELS, PAYMENT_LABELS } from './ui';
 
 export const calendar = new Hono<{ Bindings: Bindings }>();
 
@@ -11,7 +11,10 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const OK_MESSAGES: Record<string, string> = {
   created: '予約を登録しました',
   cancelled: '予約をキャンセルしました',
-  changed: '予約を変更しました'
+  changed: '予約を変更しました',
+  approved: '承認しました',
+  denied: '否認しました',
+  capacity: '定員を更新しました'
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -37,7 +40,7 @@ interface BookingRow {
   date: string;
   slot_type_id: number;
   agency_id: number | null;
-  status: 'confirmed' | 'cancelled';
+  status: BookingStatus;
   customer_name: string;
   customer_phone: string;
   party_size: number;
@@ -49,6 +52,7 @@ interface BookingRow {
   payment_method: PaymentMethod;
   notes: string;
   created_by: string;
+  created_at: string;
   plan_name: string;
   slot_name: string;
   agency_name: string | null;
@@ -195,7 +199,7 @@ calendar.get('/day/:date', async (c) => {
   const errorParam = c.req.query('error');
   const month = date.slice(0, 7);
 
-  const [availability, slotTypesResult, plansResult, bookingsResult] = await Promise.all([
+  const [availability, slotTypesResult, plansResult, bookingsResult, capacityOverridesResult] = await Promise.all([
     getAvailability(c.env.DB, date, date),
     c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<{
       id: number;
@@ -213,7 +217,10 @@ calendar.get('/day/:date', async (c) => {
        LEFT JOIN agencies a ON a.id = b.agency_id
        WHERE b.date = ?
        ORDER BY st.sort_order, b.created_at`
-    ).bind(date).all<BookingRow>()
+    ).bind(date).all<BookingRow>(),
+    c.env.DB.prepare('SELECT plan_id, slot_type_id, capacity FROM capacity_overrides WHERE date = ?')
+      .bind(date)
+      .all<{ plan_id: number; slot_type_id: number; capacity: number }>()
   ]);
 
   const slotTypes = slotTypesResult.results;
@@ -226,6 +233,11 @@ calendar.get('/day/:date', async (c) => {
   const byPlanSlot = new Map<string, SlotAvailability>();
   for (const a of availability) {
     byPlanSlot.set(`${a.slotTypeId}|${a.planId}`, a);
+  }
+
+  const capacityOverrideByPlanSlot = new Map<string, number>();
+  for (const row of capacityOverridesResult.results) {
+    capacityOverrideByPlanSlot.set(`${row.slot_type_id}|${row.plan_id}`, row.capacity);
   }
 
   return c.html(
@@ -262,12 +274,26 @@ calendar.get('/day/:date', async (c) => {
                   const names = a.blockingPlanIds.map((id) => planNameById.get(id) ?? '').join(',');
                   extra = `(${names})`;
                 }
+                const overrideCapacity = capacityOverrideByPlanSlot.get(`${st.id}|${p.id}`);
                 return (
                   <td>
                     <span class={cls}>
                       {label}
                       {extra}
                     </span>
+                    <form method="post" action="/admin/capacity">
+                      <input type="hidden" name="date" value={date} />
+                      <input type="hidden" name="plan_id" value={p.id} />
+                      <input type="hidden" name="slot_type_id" value={st.id} />
+                      <input
+                        type="number"
+                        name="capacity"
+                        min="0"
+                        style="width: 3.5em"
+                        value={overrideCapacity !== undefined ? overrideCapacity : ''}
+                      />
+                      <button type="submit">定員</button>
+                    </form>
                   </td>
                 );
               })}
@@ -303,7 +329,7 @@ calendar.get('/day/:date', async (c) => {
               <td>{b.total_amount}</td>
               <td>{PAYMENT_LABELS[b.payment_method]}</td>
               <td>{b.agency_name ?? '自社'}</td>
-              <td>{b.status === 'confirmed' ? '確定' : '取消'}</td>
+              <td>{BOOKING_STATUS_LABELS[b.status]}</td>
               <td>
                 {b.status === 'confirmed' && (
                   <>
@@ -311,6 +337,18 @@ calendar.get('/day/:date', async (c) => {
                     <form method="post" action={`/admin/bookings/${b.id}/cancel`}>
                       <input type="hidden" name="date" value={date} />
                       <button type="submit">キャンセル</button>
+                    </form>
+                  </>
+                )}
+                {b.status === 'requested' && (
+                  <>
+                    <form method="post" action={`/admin/bookings/${b.id}/approve`}>
+                      <input type="hidden" name="back" value={`/admin/day/${date}`} />
+                      <button type="submit">承認</button>
+                    </form>
+                    <form method="post" action={`/admin/bookings/${b.id}/deny`}>
+                      <input type="hidden" name="back" value={`/admin/day/${date}`} />
+                      <button type="submit">否認</button>
                     </form>
                   </>
                 )}
@@ -367,6 +405,74 @@ calendar.get('/day/:date', async (c) => {
         </label>{' '}
         <button type="submit">登録</button>
       </form>
+    </Layout>
+  );
+});
+
+calendar.get('/requests', async (c) => {
+  const okParam = c.req.query('ok');
+
+  const requestsResult = await c.env.DB.prepare(
+    `SELECT b.*, p.name AS plan_name, st.name AS slot_name, a.name AS agency_name
+     FROM bookings b
+     JOIN plans p ON p.id = b.plan_id
+     JOIN slot_types st ON st.id = b.slot_type_id
+     LEFT JOIN agencies a ON a.id = b.agency_id
+     WHERE b.status = 'requested'
+     ORDER BY b.date, st.sort_order, b.created_at`
+  ).all<BookingRow>();
+  const requests = requestsResult.results;
+
+  return c.html(
+    <Layout title="承認待ち">
+      <h1>承認待ち</h1>
+      {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
+
+      {requests.length === 0 ? (
+        <p>承認待ちはありません</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>参加日</th>
+              <th>時刻</th>
+              <th>プラン</th>
+              <th>顧客</th>
+              <th>人数</th>
+              <th>金額</th>
+              <th>代理店</th>
+              <th>申込日時</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {requests.map((b) => (
+              <tr>
+                <td>
+                  <a href={`/admin/day/${b.date}`}>{b.date}</a>
+                </td>
+                <td>{b.slot_name}</td>
+                <td>{b.plan_name}</td>
+                <td>{b.customer_name}</td>
+                <td>大{b.num_adults}小{b.num_children}</td>
+                <td>{b.total_amount}</td>
+                <td>{b.agency_name ?? '自社'}</td>
+                <td>{b.created_at}</td>
+                <td>
+                  <form method="post" action={`/admin/bookings/${b.id}/approve`}>
+                    <input type="hidden" name="back" value="/admin/requests" />
+                    <button type="submit">承認</button>
+                  </form>
+                  <form method="post" action={`/admin/bookings/${b.id}/deny`}>
+                    <input type="hidden" name="back" value="/admin/requests" />
+                    <button type="submit">否認</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </Layout>
   );
 });
@@ -437,6 +543,57 @@ calendar.post('/bookings/:id/cancel', async (c) => {
 
   const ok = await cancelBooking(c.env.DB, id);
   return c.redirect(`/admin/day/${date}?${ok ? 'ok=cancelled' : 'error=invalid'}`);
+});
+
+function resolveBack(v: unknown): string {
+  return typeof v === 'string' && v.startsWith('/admin/') ? v : '/admin/requests';
+}
+
+calendar.post('/bookings/:id/approve', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  const form = await c.req.parseBody();
+  const back = resolveBack(form.back);
+
+  const ok = id !== null && (await approveBooking(c.env.DB, id));
+  return c.redirect(`${back}?${ok ? 'ok=approved' : 'error=invalid'}`);
+});
+
+calendar.post('/bookings/:id/deny', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  const form = await c.req.parseBody();
+  const back = resolveBack(form.back);
+
+  const ok = id !== null && (await denyBooking(c.env.DB, id));
+  return c.redirect(`${back}?${ok ? 'ok=denied' : 'error=invalid'}`);
+});
+
+calendar.post('/capacity', async (c) => {
+  const form = await c.req.parseBody();
+  const date = typeof form.date === 'string' ? form.date : '';
+  const planId = parsePositiveInt(form.plan_id);
+  const slotTypeId = parsePositiveInt(form.slot_type_id);
+  const capacityRaw = typeof form.capacity === 'string' ? form.capacity.trim() : '';
+
+  if (!DATE_RE.test(date) || planId === null || slotTypeId === null) {
+    return c.redirect('/admin');
+  }
+
+  if (capacityRaw === '') {
+    await c.env.DB.prepare(
+      `DELETE FROM capacity_overrides WHERE date = ? AND plan_id = ? AND slot_type_id = ?`
+    ).bind(date, planId, slotTypeId).run();
+    return c.redirect(`/admin/day/${date}?ok=capacity`);
+  }
+
+  const capacity = parseNonNegativeInt(capacityRaw);
+  if (capacity === null) return c.redirect(`/admin/day/${date}?error=invalid`);
+
+  await c.env.DB.prepare(
+    `INSERT INTO capacity_overrides (date, plan_id, slot_type_id, capacity) VALUES (?, ?, ?, ?)
+     ON CONFLICT(date, plan_id, slot_type_id) DO UPDATE SET capacity = excluded.capacity`
+  ).bind(date, planId, slotTypeId, capacity).run();
+
+  return c.redirect(`/admin/day/${date}?ok=capacity`);
 });
 
 calendar.get('/bookings/:id/edit', async (c) => {

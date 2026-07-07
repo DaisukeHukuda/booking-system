@@ -1,5 +1,5 @@
 import type { Child } from 'hono/jsx';
-import type { SlotStatus, PaymentMethod } from '../../types';
+import type { SlotStatus, PaymentMethod, BookingStatus } from '../../types';
 
 const LAYOUT_STYLE = `
   body { font-family: sans-serif; margin: 0; padding: 0; }
@@ -30,6 +30,7 @@ export const Layout = (props: { title: string; children: Child }) => (
       <header>
         <nav>
           <a href="/admin">予約台帳</a>
+          <a href="/admin/requests">承認待ち</a>
           <a href="/admin/plans">プラン</a>
           <a href="/admin/settings">設定</a>
           <form method="post" action="/admin/logout">
@@ -54,6 +55,13 @@ export const STATUS_CLASSES: Record<SlotStatus, string> = {
   full: 'st-full',
   linked_closed: 'st-linked',
   manual_closed: 'st-manual'
+};
+
+export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
+  requested: 'リクエスト',
+  confirmed: '確定',
+  cancelled: '取消',
+  denied: '否認'
 };
 
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
