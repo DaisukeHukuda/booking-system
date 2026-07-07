@@ -4,6 +4,7 @@ import { passwordMatches, signSession, verifySession } from '../auth/session';
 import type { Bindings } from '../types';
 import { calendar } from './admin/calendar';
 import { plans } from './admin/plans';
+import { settings } from './admin/settings';
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
@@ -65,4 +66,5 @@ admin.use('*', async (c, next) => {
 
 // 注意: /plans や /settings のルータはこの行より前にマウントすること
 admin.route('/plans', plans);
+admin.route('/settings', settings);
 admin.route('/', calendar);
