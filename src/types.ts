@@ -2,6 +2,9 @@ export type Bindings = {
   DB: D1Database;
   ADMIN_PASSWORD: string;
   SESSION_SECRET: string;
+  RESEND_API_KEY?: string;
+  NOTIFY_EMAIL_TO?: string;
+  NOTIFY_EMAIL_FROM?: string;
 };
 
 export type PaymentMethod = 'onsite_cash' | 'onsite_card' | 'invoice' | 'stripe';

@@ -16,7 +16,9 @@ export default defineWorkersConfig(async () => {
             bindings: {
               TEST_MIGRATIONS: migrations,
               ADMIN_PASSWORD: 'test-password',
-              SESSION_SECRET: 'test-secret'
+              SESSION_SECRET: 'test-secret',
+              NOTIFY_EMAIL_TO: 'owner@example.com',
+              NOTIFY_EMAIL_FROM: 'noreply@example.com'
             }
           }
         }
