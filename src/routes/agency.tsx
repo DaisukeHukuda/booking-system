@@ -152,8 +152,10 @@ agency.get('/:token', async (c) => {
   const ownBookings = ownBookingsResult.results;
 
   const byPlanSlotDate = new Map<string, (typeof availability)[number]>();
+  const operatingCombos = new Set<string>();
   for (const av of availability) {
     byPlanSlotDate.set(`${av.planId}|${av.slotTypeId}|${av.date}`, av);
+    operatingCombos.add(`${av.planId}|${av.slotTypeId}`);
   }
 
   const okParam = c.req.query('ok');
@@ -197,7 +199,7 @@ agency.get('/:token', async (c) => {
           </thead>
           <tbody>
             {plans.map((p) =>
-              slotTypes.map((st) => (
+              slotTypes.filter((st) => operatingCombos.has(`${p.id}|${st.id}`)).map((st) => (
                 <tr>
                   <th class="plan-name">
                     {p.name}
