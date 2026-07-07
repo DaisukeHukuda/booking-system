@@ -37,7 +37,7 @@ describe('admin calendar', () => {
     const cookie = await adminCookie();
     const res = await app.request('/admin?month=2026-08', { headers: { cookie } }, env);
     const html = await res.text();
-    expect(html).toContain('st-manual');
+    expect(html).toContain('s-manual');
   });
 
   it('month指定なしでも200で表示される（当月）', async () => {

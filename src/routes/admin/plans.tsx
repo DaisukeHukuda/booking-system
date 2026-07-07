@@ -90,7 +90,7 @@ plans.get('/', async (c) => {
   }
 
   return c.html(
-    <Layout title="プラン管理">
+    <Layout title="プラン管理" active="/admin/plans">
       <h1>プラン管理</h1>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
@@ -195,7 +195,7 @@ plans.get('/:id/edit', async (c) => {
   const errorParam = c.req.query('error');
 
   return c.html(
-    <Layout title="プラン編集">
+    <Layout title="プラン編集" active="/admin/plans">
       <h1>プラン編集</h1>
       <p>
         <a href="/admin/plans">&laquo; プラン一覧に戻る</a>

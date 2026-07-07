@@ -86,7 +86,7 @@ stats.get('/', async (c) => {
   const nextMonth = `${next.year}-${pad2(next.month)}`;
 
   return c.html(
-    <Layout title="集計">
+    <Layout title="集計" active="/admin/stats">
       <h1>
         {year}年{monthNum}月の集計
       </h1>

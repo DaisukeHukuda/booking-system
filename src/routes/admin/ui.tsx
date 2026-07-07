@@ -1,46 +1,46 @@
 import type { Child } from 'hono/jsx';
 import type { SlotStatus, PaymentMethod, BookingStatus } from '../../types';
 
-const LAYOUT_STYLE = `
-  body { font-family: sans-serif; margin: 0; padding: 0; }
-  header { background: #f4f4f4; border-bottom: 1px solid #ccc; padding: 0.5rem 1rem; }
-  header nav { display: flex; align-items: center; gap: 1rem; }
-  header nav a { text-decoration: none; color: #333; }
-  header nav form { margin: 0 0 0 auto; }
-  main { padding: 1rem; }
-  table { border-collapse: collapse; }
-  table th, table td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
-  .st-open { color: #0a7d33; }
-  .st-full { color: #c0392b; }
-  .st-linked { color: #d35400; }
-  .st-manual { color: #7f8c8d; }
-  .msg-ok { color: green; }
-  .msg-error { color: red; }
-`;
+const NAV_ITEMS: { href: string; label: string }[] = [
+  { href: '/admin', label: '予約台帳' },
+  { href: '/admin/requests', label: '承認待ち' },
+  { href: '/admin/plans', label: 'プラン' },
+  { href: '/admin/agencies', label: '代理店' },
+  { href: '/admin/stats', label: '集計' },
+  { href: '/admin/settings', label: '設定' }
+];
 
-export const Layout = (props: { title: string; children: Child }) => (
+export const Layout = (props: { title: string; active?: string; children: Child }) => (
   <html lang="ja">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>{props.title}</title>
-      <style>{LAYOUT_STYLE}</style>
+      <link rel="stylesheet" href="/style.css" />
     </head>
     <body>
-      <header>
-        <nav>
-          <a href="/admin">予約台帳</a>
-          <a href="/admin/requests">承認待ち</a>
-          <a href="/admin/plans">プラン</a>
-          <a href="/admin/agencies">代理店</a>
-          <a href="/admin/stats">集計</a>
-          <a href="/admin/settings">設定</a>
-          <form method="post" action="/admin/logout">
-            <button type="submit">ログアウト</button>
-          </form>
-        </nav>
+      <header class="site-header">
+        <div class="inner">
+          <a class="brand" href="/admin">
+            Sup! Sup!<small>RESERVATION LEDGER</small>
+          </a>
+          <nav class="nav">
+            {NAV_ITEMS.map((item) => (
+              <a href={item.href} class={item.href === props.active ? 'is-active' : undefined}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div class="header-actions">
+            <form method="post" action="/admin/logout">
+              <button class="btn btn-sm btn-onnavy" type="submit">
+                ログアウト
+              </button>
+            </form>
+          </div>
+        </div>
       </header>
-      <main>{props.children}</main>
+      <main class="page">{props.children}</main>
     </body>
   </html>
 );

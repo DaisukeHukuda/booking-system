@@ -52,7 +52,7 @@ agencies.get('/', async (c) => {
   const rows = result.results;
 
   return c.html(
-    <Layout title="代理店管理">
+    <Layout title="代理店管理" active="/admin/agencies">
       <h1>代理店管理</h1>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
@@ -142,7 +142,7 @@ agencies.get('/:id/edit', async (c) => {
   const errorParam = c.req.query('error');
 
   return c.html(
-    <Layout title="代理店編集">
+    <Layout title="代理店編集" active="/admin/agencies">
       <h1>代理店編集</h1>
       <p>
         <a href="/admin/agencies">&laquo; 代理店一覧に戻る</a>

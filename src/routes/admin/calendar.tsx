@@ -79,6 +79,16 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
   return { year: y, month: m };
 }
 
+function todayJst(): string {
+  return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
+}
+
+function formatStartTime(startTime: string): string {
+  return startTime.startsWith('0') ? startTime.slice(1) : startTime;
+}
+
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
 calendar.get('/', async (c) => {
   const monthParam = c.req.query('month');
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentJstMonth();
@@ -89,12 +99,14 @@ calendar.get('/', async (c) => {
   const lastDay = daysInMonth(year, monthNum);
   const from = `${month}-01`;
   const to = `${month}-${pad2(lastDay)}`;
+  const today = todayJst();
 
   const [availability, slotTypesResult, emailErrorResult] = await Promise.all([
     getAvailability(c.env.DB, from, to),
-    c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<{
+    c.env.DB.prepare('SELECT id, name, start_time FROM slot_types ORDER BY sort_order, id').all<{
       id: number;
       name: string;
+      start_time: string;
     }>(),
     c.env.DB.prepare(`SELECT COUNT(*) AS n FROM email_log WHERE status = 'error'`).first<{ n: number }>()
   ]);
@@ -118,81 +130,105 @@ calendar.get('/', async (c) => {
   const firstDate = new Date(Date.UTC(year, monthNum - 1, 1));
   const firstWeekday = firstDate.getUTCDay(); // 0 = Sunday
 
-  type Cell = { day: number; date: string } | null;
+  type Cell = { day: number; date: string; weekday: number } | null;
   const cells: Cell[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let day = 1; day <= lastDay; day++) {
-    cells.push({ day, date: `${month}-${pad2(day)}` });
+    const date = `${month}-${pad2(day)}`;
+    const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+    cells.push({ day, date, weekday });
   }
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const weeks: Cell[][] = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    weeks.push(cells.slice(i, i + 7));
-  }
-
-  const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
-
   return c.html(
-    <Layout title="予約台帳">
+    <Layout title="予約台帳" active="/admin">
       {emailErrorCount >= 1 && (
-        <p class="msg-error">メール送信エラーが{emailErrorCount}件あります（email_logを確認してください）</p>
+        <div class="banner-warn">メール送信エラーが{emailErrorCount}件あります（email_logを確認してください）</div>
       )}
-      <h1>
-        {year}年{monthNum}月
-      </h1>
-      <p>
-        <a href={`/admin?month=${prevMonth}`}>&laquo; 前月</a>{' '}
-        <a href={`/admin?month=${nextMonth}`}>次月 &raquo;</a>
-      </p>
-      <table>
-        <thead>
-          <tr>
-            {WEEKDAY_LABELS.map((w) => (
-              <th>{w}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week) => (
-            <tr>
-              {week.map((cell) => {
-                if (!cell) return <td></td>;
-                return (
-                  <td>
-                    <a href={`/admin/day/${cell.date}`}>{cell.day}</a>
-                    {slotTypes.map((st) => {
-                      const entries = bySlot.get(`${cell.date}|${st.id}`) ?? [];
-                      let cls: string;
-                      let symbol: string;
-                      if (entries.length === 0) {
-                        cls = 'st-manual';
-                        symbol = '休';
-                      } else if (entries.every((e) => e.status === 'manual_closed')) {
-                        cls = 'st-manual';
-                        symbol = '休';
-                      } else if (entries.some((e) => e.status === 'open')) {
-                        cls = 'st-open';
-                        symbol = '空';
-                      } else {
-                        cls = 'st-full';
-                        symbol = '満';
-                      }
-                      const totalBooked = entries.reduce((sum, e) => sum + e.booked, 0);
-                      return (
-                        <div class={cls}>
-                          {st.name} {totalBooked > 0 ? `${totalBooked}名` : ''}
-                          {symbol}
-                        </div>
-                      );
-                    })}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div class="page-head">
+        <span class="eyebrow">Ledger / {month}</span>
+        <h1>
+          {year}年{monthNum}月 予約台帳
+        </h1>
+        <span class="sub">タップで日別詳細へ</span>
+      </div>
+      <div class="cal-nav">
+        <a class="btn" href={`/admin?month=${prevMonth}`}>
+          &laquo; 前月
+        </a>
+        <a class="btn" href={`/admin?month=${nextMonth}`}>
+          次月 &raquo;
+        </a>
+        <span class="spacer"></span>
+        <a class="btn btn-primary" href={`/admin/day/${today}`}>
+          今日の予約へ
+        </a>
+      </div>
+      <div class="cal">
+        {WEEKDAY_LABELS.map((w, i) => (
+          <div class={`cal-dow${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}`}>{w}</div>
+        ))}
+        {cells.map((cell) => {
+          if (!cell) return <div class="cal-cell is-empty"></div>;
+          const isSun = cell.weekday === 0;
+          const isSat = cell.weekday === 6;
+          const isToday = cell.date === today;
+          return (
+            <a
+              class={`cal-cell${isToday ? ' is-today' : ''}`}
+              href={`/admin/day/${cell.date}`}
+            >
+              <div class={`cal-daynum${isSun ? ' sun' : isSat ? ' sat' : ''}`}>
+                {cell.day}
+                <span class="dow-inline">({WEEKDAY_LABELS[cell.weekday]})</span>
+                {isToday && <span class="today-label">TODAY</span>}
+              </div>
+              <div class="cal-slots">
+                {slotTypes.map((st) => {
+                  const entries = bySlot.get(`${cell.date}|${st.id}`) ?? [];
+                  const totalBooked = entries.reduce((sum, e) => sum + e.booked, 0);
+                  let cls: string;
+                  let n: string;
+                  if (entries.length === 0 || entries.every((e) => e.status === 'manual_closed')) {
+                    cls = 's-manual';
+                    n = '–';
+                  } else if (entries.some((e) => e.status === 'open')) {
+                    cls = 's-open';
+                    n = `${totalBooked}名`;
+                  } else if (entries.some((e) => e.status === 'linked_closed')) {
+                    cls = 's-linked';
+                    n = totalBooked > 0 ? `${totalBooked}名` : '–';
+                  } else {
+                    cls = 's-full';
+                    n = `${totalBooked}名`;
+                  }
+                  return (
+                    <div class={`cal-slot ${cls}`}>
+                      <i class="dot"></i>
+                      <span class="t">{formatStartTime(st.start_time)}</span>
+                      <span class="n">{n}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+      <div class="cal-legend">
+        <span class="lg-open">
+          <i></i>空きあり
+        </span>
+        <span class="lg-full">
+          <i></i>満席
+        </span>
+        <span class="lg-linked">
+          <i></i>連動クローズ
+        </span>
+        <span class="lg-manual">
+          <i></i>手動クローズ
+        </span>
+      </div>
     </Layout>
   );
 });
@@ -247,7 +283,7 @@ calendar.get('/day/:date', async (c) => {
   }
 
   return c.html(
-    <Layout title={date}>
+    <Layout title={date} active="/admin">
       <h1>{date}</h1>
       <p>
         <a href={`/admin?month=${month}`}>&laquo; カレンダーに戻る</a>
@@ -430,7 +466,7 @@ calendar.get('/requests', async (c) => {
   const requests = requestsResult.results;
 
   return c.html(
-    <Layout title="承認待ち">
+    <Layout title="承認待ち" active="/admin/requests">
       <h1>承認待ち</h1>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
 
@@ -629,7 +665,7 @@ calendar.get('/bookings/:id/edit', async (c) => {
   const errorParam = c.req.query('error');
 
   return c.html(
-    <Layout title="予約変更">
+    <Layout title="予約変更" active="/admin">
       <h1>予約変更</h1>
       <p>
         <a href={`/admin/day/${booking.date}`}>&laquo; {booking.date} に戻る</a>

@@ -16,17 +16,28 @@ const LoginPage = (props: { error: string | null }) => (
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>管理者ログイン</title>
+      <title>ログイン | Sup! Sup! 予約管理</title>
+      <link rel="stylesheet" href="/style.css" />
     </head>
     <body>
-      <h1>管理者ログイン</h1>
-      {props.error && <p style="color: red">{props.error}</p>}
-      <form method="post" action="/admin/login">
-        <label>
-          パスワード: <input type="password" name="password" required />
-        </label>
-        <button type="submit">ログイン</button>
-      </form>
+      <main class="login-wrap">
+        <form class="login-card" method="post" action="/admin/login">
+          <div class="brand-lg">
+            Sup! Sup!<small>RESERVATION LEDGER</small>
+          </div>
+          {props.error && <p class="msg-error">{props.error}</p>}
+          <div class="field" style="margin:24px 0 16px">
+            <label for="pw">パスワード</label>
+            <input type="password" id="pw" name="password" autocomplete="current-password" autofocus required />
+          </div>
+          <button class="btn btn-primary btn-lg btn-block" type="submit">
+            ログイン
+          </button>
+          <p class="muted small" style="margin:16px 0 0">
+            オーナー専用の管理画面です。
+          </p>
+        </form>
+      </main>
     </body>
   </html>
 );

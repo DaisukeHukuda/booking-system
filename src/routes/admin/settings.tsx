@@ -87,7 +87,7 @@ settings.get('/', async (c) => {
   for (const p of plans) planNameById.set(p.id, p.name);
 
   return c.html(
-    <Layout title="設定">
+    <Layout title="設定" active="/admin/settings">
       <h1>設定</h1>
       {okParam === '1' && <p class="msg-ok">{OK_MESSAGE}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
