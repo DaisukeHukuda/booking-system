@@ -52,6 +52,34 @@ export async function createBooking(db: D1Database, nb: NewBooking): Promise<Boo
   return { ok: true, bookingId: res.meta.last_row_id };
 }
 
+export interface BookingChange {
+  planId: number;
+  date: string;
+  slotTypeId: number;
+  partySize: number;
+  totalAmount?: number;
+  notes?: string;
+}
+
+// 変更後の枠の空き条件（自分自身を除外して評価）をWHERE句に含めた1文のUPDATE。
+// 条件を満たさなければ meta.changes = 0 で元の行は無変更のまま残る。
+export async function changeBooking(db: D1Database, bookingId: number, ch: BookingChange): Promise<BookingResult> {
+  const cond = slotOpenCond(ch, bookingId);
+  const res = await db.prepare(
+    `UPDATE bookings
+     SET plan_id = ?, date = ?, slot_type_id = ?, party_size = ?,
+         total_amount = COALESCE(?, total_amount), notes = COALESCE(?, notes)
+     WHERE id = ? AND status = 'confirmed' AND ${cond.sql}`
+  ).bind(
+    ch.planId, ch.date, ch.slotTypeId, ch.partySize,
+    ch.totalAmount ?? null, ch.notes ?? null,
+    bookingId, ...cond.params
+  ).run();
+
+  if (res.meta.changes !== 1) return { ok: false, reason: 'slot_unavailable' };
+  return { ok: true, bookingId };
+}
+
 export async function cancelBooking(db: D1Database, bookingId: number): Promise<boolean> {
   const res = await db.prepare(
     `UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ? AND status = 'confirmed'`
