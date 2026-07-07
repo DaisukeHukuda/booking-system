@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { passwordMatches, signSession, verifySession } from '../auth/session';
 import type { Bindings } from '../types';
-import { Layout } from './admin/ui';
+import { calendar } from './admin/calendar';
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
@@ -62,11 +62,5 @@ admin.use('*', async (c, next) => {
   await next();
 });
 
-admin.get('/', (c) =>
-  c.html(
-    <Layout title="予約管理">
-      <h1>予約管理システム</h1>
-      <p>予約台帳はステップ2で実装します。</p>
-    </Layout>
-  )
-);
+// 注意: /plans や /settings のルータはこの行より前にマウントすること
+admin.route('/', calendar);
