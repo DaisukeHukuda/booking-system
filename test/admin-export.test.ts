@@ -23,9 +23,11 @@ describe('admin CSV export', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/csv');
     expect(res.headers.get('content-disposition')).toContain('reservations_2026-08-01_2026-08-31.csv');
-    const body = await res.text();
-    expect(body.charCodeAt(0)).toBe(0xfeff); // BOM
-    const lines = body.slice(1).split('\r\n').filter((l) => l);
+    // BOMはバイト列で検証する（res.text() はUTF-8デコード時に先頭BOMを剥がすため）
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf]);
+    const body = new TextDecoder().decode(bytes.slice(3));
+    const lines = body.split('\r\n').filter((l) => l);
     expect(lines[0]).toBe('予約ID,参加日,開始時刻,時間帯,プラン,顧客名,電話,大人,小人,合計人数,大人単価,小人単価,金額,支払方法,支払状況,経路,状態,申込日時,備考');
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('2026-08-01');

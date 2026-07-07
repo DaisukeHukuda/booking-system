@@ -271,10 +271,8 @@ stats.get('/export.csv', async (c) => {
     lines.push(row.map(csvEscape).join(','));
   }
 
-  // 先頭にBOMを2つ書き込む: Fetch/TextDecoderの標準UTF-8デコードは
-  // ストリーム先頭のBOM(EF BB BF)を1つだけ消費して符号化シグネチャとして扱うため、
-  // デコード後の文字列にBOM文字を残すには2つ書き込む必要がある。
-  const body = '﻿﻿' + lines.join('\r\n') + '\r\n';
+  // 先頭のBOMはExcelがUTF-8と認識するためのもの（1つだけ）
+  const body = '﻿' + lines.join('\r\n') + '\r\n';
 
   c.header('content-type', 'text/csv; charset=utf-8');
   c.header('content-disposition', `attachment; filename="reservations_${from}_${to}.csv"`);
