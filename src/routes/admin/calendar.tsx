@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getAvailability } from '../../core/availability';
-import { createBooking, cancelBooking } from '../../core/booking';
+import { createBooking, cancelBooking, changeBooking } from '../../core/booking';
 import type { Bindings, PaymentMethod, SlotAvailability } from '../../types';
 import { Layout, STATUS_LABELS, STATUS_CLASSES, PAYMENT_LABELS } from './ui';
 
@@ -416,4 +416,123 @@ calendar.post('/bookings/:id/cancel', async (c) => {
 
   const ok = await cancelBooking(c.env.DB, id);
   return c.redirect(`/admin/day/${date}?${ok ? 'ok=cancelled' : 'error=invalid'}`);
+});
+
+calendar.get('/bookings/:id/edit', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin');
+
+  const [booking, slotTypesResult, plansResult] = await Promise.all([
+    c.env.DB.prepare(`SELECT * FROM bookings WHERE id = ?`).bind(id).first<BookingRow>(),
+    c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<{
+      id: number;
+      name: string;
+    }>(),
+    c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
+      id: number;
+      name: string;
+    }>()
+  ]);
+
+  if (!booking || booking.status !== 'confirmed') return c.redirect('/admin');
+
+  const slotTypes = slotTypesResult.results;
+  const plans = plansResult.results;
+  const errorParam = c.req.query('error');
+
+  return c.html(
+    <Layout title="予約変更">
+      <h1>予約変更</h1>
+      <p>
+        <a href={`/admin/day/${booking.date}`}>&laquo; {booking.date} に戻る</a>
+      </p>
+      {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
+      <form method="post" action={`/admin/bookings/${booking.id}`}>
+        <label>
+          日付: <input type="date" name="date" value={booking.date} />
+        </label>{' '}
+        <label>
+          プラン:{' '}
+          <select name="plan_id">
+            {plans.map((p) => (
+              <option value={p.id} selected={p.id === booking.plan_id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
+        <label>
+          時間帯:{' '}
+          <select name="slot_type_id">
+            {slotTypes.map((st) => (
+              <option value={st.id} selected={st.id === booking.slot_type_id}>
+                {st.name}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
+        <label>
+          顧客名: <input type="text" name="customer_name" value={booking.customer_name} required />
+        </label>{' '}
+        <label>
+          電話: <input type="text" name="customer_phone" value={booking.customer_phone} />
+        </label>{' '}
+        <label>
+          人数: <input type="number" name="party_size" min="1" value={booking.party_size} />
+        </label>{' '}
+        <label>
+          金額: <input type="number" name="total_amount" min="0" value={booking.total_amount} />
+        </label>{' '}
+        <label>
+          備考: <textarea name="notes">{booking.notes}</textarea>
+        </label>{' '}
+        <button type="submit">変更を保存</button>
+      </form>
+    </Layout>
+  );
+});
+
+calendar.post('/bookings/:id', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin');
+
+  const form = await c.req.parseBody();
+  const date = typeof form.date === 'string' ? form.date : '';
+  const planId = parsePositiveInt(form.plan_id);
+  const slotTypeId = parsePositiveInt(form.slot_type_id);
+  const partySize = parsePositiveInt(form.party_size);
+  const totalAmount = parseNonNegativeInt(form.total_amount);
+  const customerName = typeof form.customer_name === 'string' ? form.customer_name.trim() : '';
+  const customerPhone = typeof form.customer_phone === 'string' ? form.customer_phone : '';
+  const notes = typeof form.notes === 'string' ? form.notes : '';
+
+  if (
+    !DATE_RE.test(date) ||
+    planId === null ||
+    slotTypeId === null ||
+    partySize === null ||
+    totalAmount === null ||
+    customerName === ''
+  ) {
+    return c.redirect(`/admin/bookings/${id}/edit?error=invalid`);
+  }
+
+  const result = await changeBooking(c.env.DB, id, {
+    planId,
+    date,
+    slotTypeId,
+    partySize,
+    totalAmount,
+    notes
+  });
+
+  if (!result.ok) return c.redirect(`/admin/bookings/${id}/edit?error=unavailable`);
+
+  // 連絡先（氏名・電話）は在庫判定に影響しないため、changeBooking のアトミックUPDATEとは
+  // 別に更新してよい。
+  await c.env.DB.prepare(`UPDATE bookings SET customer_name = ?, customer_phone = ? WHERE id = ?`)
+    .bind(customerName, customerPhone, id)
+    .run();
+
+  return c.redirect(`/admin/day/${date}?ok=changed`);
 });
