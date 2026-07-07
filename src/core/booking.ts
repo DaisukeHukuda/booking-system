@@ -28,7 +28,9 @@ function slotOpenCond(
           <= COALESCE(
                (SELECT co.capacity FROM capacity_overrides co
                  WHERE co.date = ? AND co.plan_id = ? AND co.slot_type_id = ?),
-               (SELECT ps.capacity FROM plan_slots ps WHERE ps.plan_id = ? AND ps.slot_type_id = ?))
+               (SELECT CASE WHEN strftime('%w', ?) IN ('0', '6') AND ps.capacity_weekend IS NOT NULL
+                            THEN ps.capacity_weekend ELSE ps.capacity END
+                  FROM plan_slots ps WHERE ps.plan_id = ? AND ps.slot_type_id = ?))
       AND NOT EXISTS (SELECT 1 FROM bookings b
               JOIN slot_types st_b ON st_b.id = b.slot_type_id
               JOIN plans p_b ON p_b.id = b.plan_id
@@ -47,10 +49,24 @@ function slotOpenCond(
       v.planId, v.slotTypeId,
       v.date, v.slotTypeId, v.planId,
       v.planId, v.date, v.slotTypeId, ex, ex, v.partySize,
-      v.date, v.planId, v.slotTypeId, v.planId, v.slotTypeId,
+      v.date, v.planId, v.slotTypeId, v.date, v.planId, v.slotTypeId,
       v.planId, v.date, v.planId, v.slotTypeId, ex, ex, v.slotTypeId, v.planId, v.slotTypeId
     ]
   };
+}
+
+// 有効単価: price_overrides(日付×プラン) があればそれ、なければプランの単価
+export async function getEffectivePrices(
+  db: D1Database, planId: number, date: string
+): Promise<{ priceAdult: number; priceChild: number } | null> {
+  const row = await db.prepare(
+    `SELECT COALESCE(po.price_adult, p.price_adult) AS priceAdult,
+            COALESCE(po.price_child, p.price_child) AS priceChild
+     FROM plans p
+     LEFT JOIN price_overrides po ON po.plan_id = p.id AND po.date = ?
+     WHERE p.id = ?`
+  ).bind(date, planId).first<{ priceAdult: number; priceChild: number }>();
+  return row ?? null;
 }
 
 export async function createBooking(db: D1Database, nb: NewBooking): Promise<BookingResult> {

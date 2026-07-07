@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getAvailability } from '../../core/availability';
-import { createBooking, cancelBooking, changeBooking, approveBooking, denyBooking } from '../../core/booking';
+import { createBooking, cancelBooking, changeBooking, approveBooking, denyBooking, getEffectivePrices } from '../../core/booking';
 import { sendBookingNotification } from '../../core/notify';
 import type { Bindings, BookingStatus, PaymentMethod, SlotAvailability } from '../../types';
 import {
@@ -655,12 +655,10 @@ calendar.post('/bookings', async (c) => {
     return c.redirect(`/admin/day/${date}?error=invalid`);
   }
 
-  const plan = await c.env.DB.prepare('SELECT price_adult, price_child FROM plans WHERE id = ?')
-    .bind(planId)
-    .first<{ price_adult: number; price_child: number }>();
+  const plan = await getEffectivePrices(c.env.DB, planId, date);
   if (!plan) return c.redirect(`/admin/day/${date}?error=invalid`);
 
-  const totalAmount = totalAmountInput ?? numAdults * plan.price_adult + numChildren * plan.price_child;
+  const totalAmount = totalAmountInput ?? numAdults * plan.priceAdult + numChildren * plan.priceChild;
   const asRequest = form.as_request === '1';
 
   const result = await createBooking(c.env.DB, {
@@ -671,8 +669,8 @@ calendar.post('/bookings', async (c) => {
     customerPhone,
     numAdults,
     numChildren,
-    priceAdult: plan.price_adult,
-    priceChild: plan.price_child,
+    priceAdult: plan.priceAdult,
+    priceChild: plan.priceChild,
     totalAmount,
     paymentMethod: paymentMethod as PaymentMethod,
     notes,

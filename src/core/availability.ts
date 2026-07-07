@@ -22,10 +22,10 @@ function overlaps(aStart: number, aDur: number, bStart: number, bDur: number): b
 export async function getAvailability(db: D1Database, from: string, to: string): Promise<SlotAvailability[]> {
   const [planSlots, closures, booked, planResources, overrides, slotTypes] = await Promise.all([
     db.prepare(
-      `SELECT ps.plan_id AS planId, ps.slot_type_id AS slotTypeId, ps.capacity, p.duration_min AS durationMin
+      `SELECT ps.plan_id AS planId, ps.slot_type_id AS slotTypeId, ps.capacity, ps.capacity_weekend AS capacityWeekend, p.duration_min AS durationMin
        FROM plan_slots ps JOIN plans p ON p.id = ps.plan_id
        WHERE ps.active = 1 AND p.active = 1`
-    ).all<{ planId: number; slotTypeId: number; capacity: number; durationMin: number }>(),
+    ).all<{ planId: number; slotTypeId: number; capacity: number; capacityWeekend: number | null; durationMin: number }>(),
     db.prepare(
       `SELECT date, slot_type_id AS slotTypeId, plan_id AS planId
        FROM slot_closures WHERE date BETWEEN ?1 AND ?2`
@@ -86,7 +86,9 @@ export async function getAvailability(db: D1Database, from: string, to: string):
   for (const date of datesBetween(from, to)) {
     for (const ps of planSlots.results) {
       const bookedCount = bookedByPlanSlot.get(`${ps.planId}|${date}|${ps.slotTypeId}`) ?? 0;
-      const cap = overrideByDatePlanSlot.get(`${date}|${ps.planId}|${ps.slotTypeId}`) ?? ps.capacity;
+      const isWknd = [0, 6].includes(new Date(date + 'T00:00:00Z').getUTCDay());
+      const baseCap = isWknd && ps.capacityWeekend != null ? ps.capacityWeekend : ps.capacity;
+      const cap = overrideByDatePlanSlot.get(`${date}|${ps.planId}|${ps.slotTypeId}`) ?? baseCap;
       let status: SlotStatus;
       let blockingPlanIds: number[] = [];
 

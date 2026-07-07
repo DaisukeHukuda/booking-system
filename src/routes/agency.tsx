@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Child } from 'hono/jsx';
 import { getAvailability } from '../core/availability';
-import { createBooking, cancelBookingForAgency } from '../core/booking';
+import { createBooking, cancelBookingForAgency, getEffectivePrices } from '../core/booking';
 import { sendBookingNotification } from '../core/notify';
 import type { Bindings, PaymentMethod } from '../types';
 import { BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES } from './admin/ui';
@@ -387,12 +387,10 @@ agency.post('/:token/bookings', async (c) => {
     return c.redirect(`/a/${token}?error=invalid`);
   }
 
-  const plan = await c.env.DB.prepare('SELECT price_adult, price_child FROM plans WHERE id = ?')
-    .bind(planId)
-    .first<{ price_adult: number; price_child: number }>();
+  const plan = await getEffectivePrices(c.env.DB, planId, date);
   if (!plan) return c.redirect(`/a/${token}?error=invalid`);
 
-  const totalAmount = numAdults * plan.price_adult + numChildren * plan.price_child;
+  const totalAmount = numAdults * plan.priceAdult + numChildren * plan.priceChild;
   const status = a.booking_mode === 'request' ? 'requested' : 'confirmed';
 
   const result = await createBooking(c.env.DB, {
@@ -404,8 +402,8 @@ agency.post('/:token/bookings', async (c) => {
     customerPhone,
     numAdults,
     numChildren,
-    priceAdult: plan.price_adult,
-    priceChild: plan.price_child,
+    priceAdult: plan.priceAdult,
+    priceChild: plan.priceChild,
     totalAmount,
     paymentMethod: 'invoice' as PaymentMethod,
     notes,
