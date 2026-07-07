@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Bindings, BookingStatus, PaymentMethod } from '../../types';
 import { Layout, BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES, PAYMENT_LABELS } from './ui';
 import { todayJst } from './util';
+import { formatCustomFields } from '../../core/customFields';
 
 export const lists = new Hono<{ Bindings: Bindings }>();
 
@@ -227,6 +228,7 @@ interface TodayRow {
   num_adults: number;
   num_children: number;
   notes: string;
+  custom_fields: string;
   plan_name: string;
   slot_type_id: number;
   slot_name: string;
@@ -365,7 +367,7 @@ lists.get('/today', async (c) => {
   const today = todayJst();
 
   const result = await c.env.DB.prepare(
-    `SELECT b.id, b.status, b.customer_name, b.customer_phone, b.num_adults, b.num_children, b.notes,
+    `SELECT b.id, b.status, b.customer_name, b.customer_phone, b.num_adults, b.num_children, b.notes, b.custom_fields,
             p.name AS plan_name, st.id AS slot_type_id, st.name AS slot_name, st.start_time AS slot_start_time,
             a.name AS agency_name
      FROM bookings b
@@ -431,6 +433,9 @@ lists.get('/today', async (c) => {
                   電話: {b.customer_phone}　人数: 大{b.num_adults} 小{b.num_children}　プラン: {b.plan_name}　経路: {b.agency_name ?? '自社'}
                 </div>
                 {b.notes && <div class="muted small">備考: {b.notes}</div>}
+                {formatCustomFields(b.custom_fields) && (
+                  <div class="muted small">{formatCustomFields(b.custom_fields)}</div>
+                )}
               </div>
             ))}
           </div>

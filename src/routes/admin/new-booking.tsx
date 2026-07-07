@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import type { Bindings } from '../../types';
-import { Layout, PAYMENT_LABELS } from './ui';
+import { Layout, PAYMENT_LABELS, CustomFieldGroups } from './ui';
 import { todayJst } from './util';
+import { getActiveFieldsByPlan } from '../../core/customFields';
 
 export const newBooking = new Hono<{ Bindings: Bindings }>();
 
 newBooking.get('/', async (c) => {
-  const [slotTypesResult, plansResult] = await Promise.all([
+  const [slotTypesResult, plansResult, fieldsByPlan] = await Promise.all([
     c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<{
       id: number;
       name: string;
@@ -14,7 +15,8 @@ newBooking.get('/', async (c) => {
     c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
       id: number;
       name: string;
-    }>()
+    }>(),
+    getActiveFieldsByPlan(c.env.DB)
   ]);
   const slotTypes = slotTypesResult.results;
   const plans = plansResult.results;
@@ -33,7 +35,7 @@ newBooking.get('/', async (c) => {
           </div>
           <div class="field">
             <label>プラン</label>
-            <select name="plan_id">
+            <select name="plan_id" id="cf-plan-select">
               {plans.map((p) => (
                 <option value={p.id}>{p.name}</option>
               ))}
@@ -78,6 +80,7 @@ newBooking.get('/', async (c) => {
             </select>
           </div>
         </div>
+        <CustomFieldGroups fieldsByPlan={fieldsByPlan} defaultPlanId={plans[0]?.id} />
         <div class="form-row" style="margin-top:12px">
           <div class="field" style="flex:1">
             <label>備考</label>

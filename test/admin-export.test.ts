@@ -28,7 +28,7 @@ describe('admin CSV export', () => {
     expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf]);
     const body = new TextDecoder().decode(bytes.slice(3));
     const lines = body.split('\r\n').filter((l) => l);
-    expect(lines[0]).toBe('予約ID,参加日,開始時刻,時間帯,プラン,顧客名,電話,大人,小人,合計人数,大人単価,小人単価,金額,支払方法,支払状況,経路,状態,申込日時,備考');
+    expect(lines[0]).toBe('予約ID,参加日,開始時刻,時間帯,プラン,顧客名,電話,大人,小人,合計人数,大人単価,小人単価,金額,支払方法,支払状況,経路,状態,申込日時,備考,追加項目');
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('2026-08-01');
     expect(lines[1]).toContain('プランA');

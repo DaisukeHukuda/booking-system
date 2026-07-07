@@ -27,6 +27,7 @@ export interface NewBooking {
   notes?: string;
   createdBy: 'admin' | 'agency';
   status?: 'confirmed' | 'requested'; // 省略時 confirmed
+  customFields?: { label: string; value: string }[];
 }
 
 export type BookingResult =

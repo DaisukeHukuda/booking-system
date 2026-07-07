@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '../../types';
 import { Layout, PAYMENT_LABELS, BOOKING_STATUS_LABELS } from './ui';
+import { formatCustomFields } from '../../core/customFields';
 
 export const stats = new Hono<{ Bindings: Bindings }>();
 
@@ -206,6 +207,7 @@ interface ExportRow {
   status: string;
   created_at: string;
   notes: string;
+  custom_fields: string;
 }
 
 const CSV_HEADER = [
@@ -227,7 +229,8 @@ const CSV_HEADER = [
   '経路',
   '状態',
   '申込日時',
-  '備考'
+  '備考',
+  '追加項目'
 ];
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -257,7 +260,8 @@ stats.get('/export.csv', async (c) => {
             b.num_adults AS num_adults, b.num_children AS num_children, b.party_size AS party_size,
             b.price_adult AS price_adult, b.price_child AS price_child, b.total_amount AS total_amount,
             b.payment_method AS payment_method, b.payment_status AS payment_status,
-            a.name AS agency_name, b.status AS status, b.created_at AS created_at, b.notes AS notes
+            a.name AS agency_name, b.status AS status, b.created_at AS created_at, b.notes AS notes,
+            b.custom_fields AS custom_fields
      FROM bookings b
      JOIN plans p ON p.id = b.plan_id
      JOIN slot_types st ON st.id = b.slot_type_id
@@ -287,7 +291,8 @@ stats.get('/export.csv', async (c) => {
       r.agency_name ?? '自社',
       BOOKING_STATUS_LABELS[r.status as keyof typeof BOOKING_STATUS_LABELS] ?? r.status,
       r.created_at,
-      r.notes
+      r.notes,
+      formatCustomFields(r.custom_fields)
     ];
     lines.push(row.map(csvEscape).join(','));
   }

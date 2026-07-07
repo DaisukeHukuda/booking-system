@@ -4,8 +4,9 @@ import { getAvailability } from '../core/availability';
 import { createBooking, cancelBookingForAgency, getEffectivePrices } from '../core/booking';
 import { isBeforeDeadline } from '../core/deadline';
 import { sendBookingNotification } from '../core/notify';
+import { getActiveFieldsByPlan, getActiveFields, buildCustomFields } from '../core/customFields';
 import type { Bindings, PaymentMethod } from '../types';
-import { BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES } from './admin/ui';
+import { BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES, CustomFieldGroups } from './admin/ui';
 
 export const agency = new Hono<{ Bindings: Bindings }>();
 
@@ -128,7 +129,7 @@ agency.get('/:token', async (c) => {
   const dates: string[] = [];
   for (let i = 0; i < DAYS_SHOWN; i++) dates.push(addDays(from, i));
 
-  const [availability, plansResult, slotTypesResult, ownBookingsResult, deadlinesResult] = await Promise.all([
+  const [availability, plansResult, slotTypesResult, ownBookingsResult, deadlinesResult, fieldsByPlan] = await Promise.all([
     getAvailability(c.env.DB, from, to),
     c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
       id: number;
@@ -150,7 +151,8 @@ agency.get('/:token', async (c) => {
     c.env.DB.prepare(
       `SELECT plan_id AS planId, slot_type_id AS slotTypeId, deadline_days AS deadlineDays, deadline_time AS deadlineTime
        FROM plan_slots`
-    ).all<{ planId: number; slotTypeId: number; deadlineDays: number | null; deadlineTime: string | null }>()
+    ).all<{ planId: number; slotTypeId: number; deadlineDays: number | null; deadlineTime: string | null }>(),
+    getActiveFieldsByPlan(c.env.DB)
   ]);
 
   const plans = plansResult.results;
@@ -264,7 +266,7 @@ agency.get('/:token', async (c) => {
         <div class="form-grid">
           <div class="field">
             <label>プラン</label>
-            <select name="plan_id">
+            <select name="plan_id" id="cf-plan-select">
               {plans.map((p) => (
                 <option value={p.id}>{p.name}</option>
               ))}
@@ -301,6 +303,7 @@ agency.get('/:token', async (c) => {
             <input type="text" name="customer_phone" />
           </div>
         </div>
+        <CustomFieldGroups fieldsByPlan={fieldsByPlan} defaultPlanId={plans[0]?.id} />
         <div class="form-row" style="margin-top:12px">
           <div class="field" style="flex:1">
             <label>備考</label>
@@ -412,6 +415,10 @@ agency.post('/:token/bookings', async (c) => {
   const plan = await getEffectivePrices(c.env.DB, planId, date);
   if (!plan) return c.redirect(`/a/${token}?error=invalid`);
 
+  const fields = await getActiveFields(c.env.DB, planId);
+  const customFields = buildCustomFields(fields, form);
+  if (customFields === null) return c.redirect(`/a/${token}?error=invalid`);
+
   const totalAmount = numAdults * plan.priceAdult + numChildren * plan.priceChild;
   const status = a.booking_mode === 'request' ? 'requested' : 'confirmed';
 
@@ -430,6 +437,7 @@ agency.post('/:token/bookings', async (c) => {
     paymentMethod: 'invoice' as PaymentMethod,
     notes,
     createdBy: 'agency',
+    customFields,
     status
   });
 

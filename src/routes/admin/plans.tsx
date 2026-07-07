@@ -84,6 +84,13 @@ interface SlotTypeRow {
   name: string;
 }
 
+interface PlanFieldRow {
+  id: number;
+  label: string;
+  required: number;
+  sort_order: number;
+}
+
 plans.get('/', async (c) => {
   const okParam = c.req.query('ok');
   const errorParam = c.req.query('error');
@@ -254,7 +261,7 @@ plans.get('/:id/edit', async (c) => {
   const id = parsePositiveInt(c.req.param('id'));
   if (id === null) return c.redirect('/admin/plans');
 
-  const [plan, resourcesResult, slotTypesResult, planResourcesResult, planSlotsResult] = await Promise.all([
+  const [plan, resourcesResult, slotTypesResult, planResourcesResult, planSlotsResult, planFieldsResult] = await Promise.all([
     c.env.DB.prepare('SELECT * FROM plans WHERE id = ?').bind(id).first<PlanRow>(),
     c.env.DB.prepare('SELECT id, name FROM resources ORDER BY id').all<ResourceRow>(),
     c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<SlotTypeRow>(),
@@ -270,7 +277,10 @@ plans.get('/:id/edit', async (c) => {
       deadline_days: number | null;
       deadline_time: string | null;
       active: number;
-    }>()
+    }>(),
+    c.env.DB.prepare(
+      'SELECT id, label, required, sort_order FROM plan_fields WHERE plan_id = ? AND active = 1 ORDER BY sort_order, id'
+    ).bind(id).all<PlanFieldRow>()
   ]);
 
   if (!plan) return c.redirect('/admin/plans');
@@ -298,6 +308,7 @@ plans.get('/:id/edit', async (c) => {
     });
   }
 
+  const planFields = planFieldsResult.results;
   const errorParam = c.req.query('error');
 
   return c.html(
@@ -440,6 +451,48 @@ plans.get('/:id/edit', async (c) => {
           </a>
         </div>
       </form>
+
+      <h3>予約時取得項目</h3>
+      <div class="tbl-wrap" style="max-width:600px">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>項目名</th>
+              <th>必須</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {planFields.map((f) => (
+              <tr>
+                <td>{f.label}</td>
+                <td>{f.required ? '必須' : ''}</td>
+                <td class="actions">
+                  <form method="post" action={`/admin/plans/${plan.id}/fields/${f.id}/delete`} style="display:inline">
+                    <button class="btn btn-sm btn-danger" type="submit">
+                      削除
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <form class="card card-pad" method="post" action={`/admin/plans/${plan.id}/fields`} style="max-width:600px">
+        <div class="form-grid">
+          <div class="field">
+            <label>項目名</label>
+            <input type="text" name="label" required />
+          </div>
+          <label class="check">
+            <input type="checkbox" name="required" value="1" /> 必須
+          </label>
+          <button class="btn btn-primary" type="submit">
+            追加
+          </button>
+        </div>
+      </form>
     </Layout>
   );
 });
@@ -531,6 +584,34 @@ plans.post('/:id', async (c) => {
   await c.env.DB.batch(statements);
 
   return c.redirect('/admin/plans?ok=updated');
+});
+
+plans.post('/:id/fields', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  const body = await c.req.parseBody();
+  const label = typeof body.label === 'string' ? body.label.trim() : '';
+  const required = body.required !== undefined ? 1 : 0;
+
+  if (label === '') return c.redirect(`/admin/plans/${id}/edit?error=invalid`);
+
+  await c.env.DB.prepare(
+    `INSERT INTO plan_fields (plan_id, label, required, sort_order, active)
+     VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plan_fields WHERE plan_id = ?), 1)`
+  ).bind(id, label, required, id).run();
+
+  return c.redirect(`/admin/plans/${id}/edit`);
+});
+
+plans.post('/:id/fields/:fieldId/delete', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  const fieldId = parsePositiveInt(c.req.param('fieldId'));
+  if (id === null || fieldId === null) return c.redirect('/admin/plans');
+
+  await c.env.DB.prepare('UPDATE plan_fields SET active = 0 WHERE id = ? AND plan_id = ?').bind(fieldId, id).run();
+
+  return c.redirect(`/admin/plans/${id}/edit`);
 });
 
 plans.post('/:id/copy', async (c) => {

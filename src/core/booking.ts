@@ -77,13 +77,14 @@ export async function createBooking(db: D1Database, nb: NewBooking): Promise<Boo
   const res = await db.prepare(
     `INSERT INTO bookings (plan_id, date, slot_type_id, agency_id, status, customer_name, customer_phone,
                            num_adults, num_children, price_adult, price_child,
-                           party_size, total_amount, payment_method, payment_status, notes, created_by, created_at)
-     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unpaid', ?, ?, ?
+                           party_size, total_amount, payment_method, payment_status, notes, created_by, created_at, custom_fields)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unpaid', ?, ?, ?, ?
      WHERE ${cond.sql}`
   ).bind(
     nb.planId, nb.date, nb.slotTypeId, nb.agencyId ?? null, nb.status ?? 'confirmed', nb.customerName, nb.customerPhone ?? '',
     nb.numAdults, nb.numChildren, nb.priceAdult, nb.priceChild,
     partySize, nb.totalAmount, nb.paymentMethod, nb.notes ?? '', nb.createdBy, nowIso(),
+    JSON.stringify(nb.customFields ?? []),
     ...cond.params
   ).run();
 

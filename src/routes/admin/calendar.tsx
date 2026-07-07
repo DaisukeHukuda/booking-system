@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { getAvailability } from '../../core/availability';
 import { createBooking, cancelBooking, changeBooking, approveBooking, denyBooking, getEffectivePrices } from '../../core/booking';
 import { sendBookingNotification } from '../../core/notify';
+import { getActiveFieldsByPlan, getActiveFields, buildCustomFields, formatCustomFields } from '../../core/customFields';
 import type { Bindings, BookingStatus, PaymentMethod, SlotAvailability } from '../../types';
 import {
   Layout,
@@ -9,7 +10,8 @@ import {
   STATUS_CELL_CLASSES,
   BOOKING_STATUS_LABELS,
   BOOKING_BADGE_CLASSES,
-  PAYMENT_LABELS
+  PAYMENT_LABELS,
+  CustomFieldGroups
 } from './ui';
 import { resolveBack, todayJst } from './util';
 
@@ -63,6 +65,7 @@ interface BookingRow {
   notes: string;
   created_by: string;
   created_at: string;
+  custom_fields: string;
   plan_name: string;
   slot_name: string;
   agency_name: string | null;
@@ -264,7 +267,7 @@ calendar.get('/day/:date', async (c) => {
   const errorParam = c.req.query('error');
   const month = date.slice(0, 7);
 
-  const [availability, slotTypesResult, plansResult, bookingsResult, capacityOverridesResult] = await Promise.all([
+  const [availability, slotTypesResult, plansResult, bookingsResult, capacityOverridesResult, fieldsByPlan] = await Promise.all([
     getAvailability(c.env.DB, date, date),
     c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<{
       id: number;
@@ -286,7 +289,8 @@ calendar.get('/day/:date', async (c) => {
     ).bind(date).all<BookingRow>(),
     c.env.DB.prepare('SELECT plan_id, slot_type_id, capacity FROM capacity_overrides WHERE date = ?')
       .bind(date)
-      .all<{ plan_id: number; slot_type_id: number; capacity: number }>()
+      .all<{ plan_id: number; slot_type_id: number; capacity: number }>(),
+    getActiveFieldsByPlan(c.env.DB)
   ]);
 
   const slotTypes = slotTypesResult.results;
@@ -431,6 +435,9 @@ calendar.get('/day/:date', async (c) => {
                   </td>
                   <td data-label="人数">
                     大{b.num_adults} 小{b.num_children}
+                    {formatCustomFields(b.custom_fields) && (
+                      <div class="muted small">{formatCustomFields(b.custom_fields)}</div>
+                    )}
                   </td>
                   <td data-label="金額" class="num r">
                     {b.total_amount}
@@ -484,7 +491,7 @@ calendar.get('/day/:date', async (c) => {
         <div class="form-grid">
           <div class="field">
             <label>プラン</label>
-            <select name="plan_id">
+            <select name="plan_id" id="cf-plan-select">
               {plans.map((p) => (
                 <option value={p.id}>{p.name}</option>
               ))}
@@ -529,6 +536,7 @@ calendar.get('/day/:date', async (c) => {
             </select>
           </div>
         </div>
+        <CustomFieldGroups fieldsByPlan={fieldsByPlan} defaultPlanId={plans[0]?.id} />
         <div class="form-row" style="margin-top:12px">
           <div class="field" style="flex:1">
             <label>備考</label>
@@ -659,6 +667,10 @@ calendar.post('/bookings', async (c) => {
   const plan = await getEffectivePrices(c.env.DB, planId, date);
   if (!plan) return c.redirect(`/admin/day/${date}?error=invalid`);
 
+  const fields = await getActiveFields(c.env.DB, planId);
+  const customFields = buildCustomFields(fields, form);
+  if (customFields === null) return c.redirect(`/admin/day/${date}?error=invalid`);
+
   const totalAmount = totalAmountInput ?? numAdults * plan.priceAdult + numChildren * plan.priceChild;
   const asRequest = form.as_request === '1';
 
@@ -676,6 +688,7 @@ calendar.post('/bookings', async (c) => {
     paymentMethod: paymentMethod as PaymentMethod,
     notes,
     createdBy: 'admin',
+    customFields,
     ...(asRequest ? { status: 'requested' as const } : {})
   });
 
@@ -839,6 +852,11 @@ calendar.get('/bookings/:id/edit', async (c) => {
           </button>
         </div>
       </form>
+      {formatCustomFields(booking.custom_fields) && (
+        <p class="muted small">
+          予約時取得項目（このページでは編集できません）: {formatCustomFields(booking.custom_fields)}
+        </p>
+      )}
     </Layout>
   );
 });

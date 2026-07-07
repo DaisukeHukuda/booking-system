@@ -1,5 +1,7 @@
 import type { Child } from 'hono/jsx';
+import { raw } from 'hono/html';
 import type { SlotStatus, PaymentMethod, BookingStatus } from '../../types';
+import type { PlanFieldDef } from '../../core/customFields';
 
 const NAV_ITEMS: { href: string; label: string }[] = [
   { href: '/admin', label: '台帳カレンダー' },
@@ -85,6 +87,45 @@ export const BOOKING_BADGE_CLASSES: Record<BookingStatus, string> = {
   cancelled: 'bk-cancelled',
   denied: 'bk-denied'
 };
+
+// 予約フォームに埋め込む「プラン別カスタム入力欄」。全プラン分のグループを描画し、
+// プランselect（id="cf-plan-select"）の変更に応じてJSで表示切替する（初期表示は選択中プラン）。
+// required はHTML属性を付けず、サーバー側検証のみで扱う。
+export function CustomFieldGroups(props: { fieldsByPlan: Map<number, PlanFieldDef[]>; defaultPlanId: number }) {
+  const entries = [...props.fieldsByPlan.entries()].filter(([, fields]) => fields.length > 0);
+  if (entries.length === 0) return null;
+
+  return (
+    <>
+      {entries.map(([planId, fields]) => (
+        <div class="cf-group" data-plan={planId} style={planId === props.defaultPlanId ? undefined : 'display:none'}>
+          {fields.map((f) => (
+            <div class="field">
+              <label>
+                {f.label}
+                {f.required ? ' *' : ''}
+              </label>
+              <input type="text" name={`field_${f.id}`} />
+            </div>
+          ))}
+        </div>
+      ))}
+      {raw(`<script>
+(function () {
+  var sel = document.getElementById('cf-plan-select');
+  if (!sel) return;
+  function update() {
+    document.querySelectorAll('.cf-group').forEach(function (g) {
+      g.style.display = g.getAttribute('data-plan') === sel.value ? '' : 'none';
+    });
+  }
+  sel.addEventListener('change', update);
+  update();
+})();
+</script>`)}
+    </>
+  );
+}
 
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   onsite_cash: '現地現金',
