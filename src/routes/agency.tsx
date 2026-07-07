@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Child } from 'hono/jsx';
 import { getAvailability } from '../core/availability';
 import { createBooking, cancelBookingForAgency, getEffectivePrices } from '../core/booking';
+import { isBeforeDeadline } from '../core/deadline';
 import { sendBookingNotification } from '../core/notify';
 import type { Bindings, PaymentMethod } from '../types';
 import { BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES } from './admin/ui';
@@ -20,7 +21,8 @@ const OK_MESSAGES: Record<string, string> = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   unavailable: 'この枠は直前に埋まりました',
-  invalid: '入力内容に誤りがあります'
+  invalid: '入力内容に誤りがあります',
+  deadline: '予約締切を過ぎています。お電話にてお問い合わせください'
 };
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -126,7 +128,7 @@ agency.get('/:token', async (c) => {
   const dates: string[] = [];
   for (let i = 0; i < DAYS_SHOWN; i++) dates.push(addDays(from, i));
 
-  const [availability, plansResult, slotTypesResult, ownBookingsResult] = await Promise.all([
+  const [availability, plansResult, slotTypesResult, ownBookingsResult, deadlinesResult] = await Promise.all([
     getAvailability(c.env.DB, from, to),
     c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
       id: number;
@@ -144,7 +146,11 @@ agency.get('/:token', async (c) => {
        JOIN slot_types st ON st.id = b.slot_type_id
        WHERE b.agency_id = ?
        ORDER BY b.date DESC, b.id DESC`
-    ).bind(a.id).all<AgencyBookingRow>()
+    ).bind(a.id).all<AgencyBookingRow>(),
+    c.env.DB.prepare(
+      `SELECT plan_id AS planId, slot_type_id AS slotTypeId, deadline_days AS deadlineDays, deadline_time AS deadlineTime
+       FROM plan_slots`
+    ).all<{ planId: number; slotTypeId: number; deadlineDays: number | null; deadlineTime: string | null }>()
   ]);
 
   const plans = plansResult.results;
@@ -156,6 +162,11 @@ agency.get('/:token', async (c) => {
   for (const av of availability) {
     byPlanSlotDate.set(`${av.planId}|${av.slotTypeId}|${av.date}`, av);
     operatingCombos.add(`${av.planId}|${av.slotTypeId}`);
+  }
+
+  const deadlineByPlanSlot = new Map<string, { deadlineDays: number | null; deadlineTime: string | null }>();
+  for (const dl of deadlinesResult.results) {
+    deadlineByPlanSlot.set(`${dl.planId}|${dl.slotTypeId}`, dl);
   }
 
   const okParam = c.req.query('ok');
@@ -211,7 +222,11 @@ agency.get('/:token', async (c) => {
                     if (!av) return <td class="slot-cell"></td>;
                     let cellClass: string;
                     let symbol: string;
-                    if (av.status === 'open') {
+                    const dl = deadlineByPlanSlot.get(`${p.id}|${st.id}`);
+                    if (av.status === 'open' && dl && !isBeforeDeadline(d, dl.deadlineDays, dl.deadlineTime)) {
+                      cellClass = 'off';
+                      symbol = '締切';
+                    } else if (av.status === 'open') {
                       cellClass = av.remaining <= 2 ? 'last' : 'ok';
                       symbol = `残${av.remaining}`;
                     } else if (av.status === 'manual_closed') {
@@ -385,6 +400,13 @@ agency.post('/:token/bookings', async (c) => {
     customerName === ''
   ) {
     return c.redirect(`/a/${token}?error=invalid`);
+  }
+
+  const slot = await c.env.DB.prepare(
+    `SELECT deadline_days AS deadlineDays, deadline_time AS deadlineTime FROM plan_slots WHERE plan_id = ? AND slot_type_id = ?`
+  ).bind(planId, slotTypeId).first<{ deadlineDays: number | null; deadlineTime: string | null }>();
+  if (slot && !isBeforeDeadline(date, slot.deadlineDays, slot.deadlineTime)) {
+    return c.redirect(`/a/${token}?error=deadline`);
   }
 
   const plan = await getEffectivePrices(c.env.DB, planId, date);
