@@ -1,0 +1,203 @@
+import { Hono } from 'hono';
+import type { Bindings, BookingStatus, PaymentMethod } from '../../types';
+import { Layout, BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES, PAYMENT_LABELS } from './ui';
+
+export const lists = new Hono<{ Bindings: Bindings }>();
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+interface SearchRow {
+  id: number;
+  plan_id: number;
+  date: string;
+  status: BookingStatus;
+  customer_name: string;
+  customer_phone: string;
+  num_adults: number;
+  num_children: number;
+  total_amount: number;
+  payment_method: PaymentMethod;
+  plan_name: string;
+  slot_name: string;
+  agency_name: string | null;
+}
+
+function parsePositiveInt(v: unknown): number | null {
+  if (typeof v !== 'string' || v.trim() === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+lists.get('/search', async (c) => {
+  const q = c.req.query('q') ?? '';
+  const from = c.req.query('from') ?? '';
+  const to = c.req.query('to') ?? '';
+  const planIdParam = c.req.query('plan_id') ?? '';
+  const statusParam = c.req.query('status') ?? '';
+
+  const hasSearch = q !== '' || from !== '' || to !== '' || planIdParam !== '' || statusParam !== '';
+
+  const planId = parsePositiveInt(planIdParam);
+  const status = statusParam !== '' && statusParam in BOOKING_STATUS_LABELS ? (statusParam as BookingStatus) : null;
+
+  let rows: SearchRow[] = [];
+  if (hasSearch) {
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (q !== '') {
+      conditions.push('(b.customer_name LIKE ? OR b.customer_phone LIKE ?)');
+      params.push(`%${q}%`, `%${q}%`);
+    }
+    if (DATE_RE.test(from)) {
+      conditions.push('b.date >= ?');
+      params.push(from);
+    }
+    if (DATE_RE.test(to)) {
+      conditions.push('b.date <= ?');
+      params.push(to);
+    }
+    if (planId !== null) {
+      conditions.push('b.plan_id = ?');
+      params.push(planId);
+    }
+    if (status !== null) {
+      conditions.push('b.status = ?');
+      params.push(status);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await c.env.DB.prepare(
+      `SELECT b.*, p.name AS plan_name, st.name AS slot_name, a.name AS agency_name
+       FROM bookings b
+       JOIN plans p ON p.id = b.plan_id
+       JOIN slot_types st ON st.id = b.slot_type_id
+       LEFT JOIN agencies a ON a.id = b.agency_id
+       ${where}
+       ORDER BY b.date DESC, b.id DESC
+       LIMIT 200`
+    ).bind(...params).all<SearchRow>();
+    rows = result.results;
+  }
+
+  const plansResult = await c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
+    id: number;
+    name: string;
+  }>();
+  const plans = plansResult.results;
+
+  return c.html(
+    <Layout title="予約検索" active="/admin/search">
+      <div class="page-head">
+        <span class="eyebrow">Search</span>
+        <h1>予約検索</h1>
+      </div>
+      <form class="card card-pad" method="get" action="/admin/search">
+        <div class="form-grid">
+          <div class="field">
+            <label>氏名・電話</label>
+            <input type="text" name="q" value={q} placeholder="氏名または電話番号の一部" />
+          </div>
+          <div class="field">
+            <label>期間（から）</label>
+            <input type="date" name="from" value={from} />
+          </div>
+          <div class="field">
+            <label>期間（まで）</label>
+            <input type="date" name="to" value={to} />
+          </div>
+          <div class="field">
+            <label>プラン</label>
+            <select name="plan_id">
+              <option value="">すべて</option>
+              {plans.map((p) => (
+                <option value={p.id} selected={planId === p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>状態</label>
+            <select name="status">
+              <option value="">すべて</option>
+              {Object.entries(BOOKING_STATUS_LABELS).map(([key, label]) => (
+                <option value={key} selected={status === key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <button class="btn btn-primary btn-lg" type="submit">
+            検索
+          </button>
+        </div>
+      </form>
+
+      {hasSearch &&
+        (rows.length === 0 ? (
+          <p>該当する予約がありません</p>
+        ) : (
+          <div class="tbl-wrap tbl-cards">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>参加日</th>
+                  <th>時間帯</th>
+                  <th>プラン</th>
+                  <th>顧客</th>
+                  <th>電話</th>
+                  <th>人数</th>
+                  <th class="r">金額</th>
+                  <th>支払</th>
+                  <th>経路</th>
+                  <th>状態</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((b) => {
+                  const muted = b.status === 'cancelled' || b.status === 'denied';
+                  return (
+                    <tr class={muted ? 'row-muted' : undefined}>
+                      <td data-label="参加日">
+                        <a href={`/admin/day/${b.date}`}>{b.date}</a>
+                      </td>
+                      <td data-label="時間帯" class="num">
+                        {b.slot_name}
+                      </td>
+                      <td data-label="プラン">{b.plan_name}</td>
+                      <td data-label="顧客">{b.customer_name}</td>
+                      <td data-label="電話" class="num">
+                        {b.customer_phone}
+                      </td>
+                      <td data-label="人数">
+                        大{b.num_adults} 小{b.num_children}
+                      </td>
+                      <td data-label="金額" class="num r">
+                        {b.total_amount}
+                      </td>
+                      <td data-label="支払">{PAYMENT_LABELS[b.payment_method]}</td>
+                      <td data-label="経路">{b.agency_name ?? '自社'}</td>
+                      <td data-label="状態">
+                        <span class={`badge ${BOOKING_BADGE_CLASSES[b.status]}`}>{BOOKING_STATUS_LABELS[b.status]}</span>
+                      </td>
+                      <td data-label="" class="actions">
+                        {b.status === 'confirmed' && (
+                          <a class="btn btn-sm" href={`/admin/bookings/${b.id}/edit`}>
+                            変更
+                          </a>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+    </Layout>
+  );
+});
