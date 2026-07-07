@@ -51,3 +51,10 @@ export async function createBooking(db: D1Database, nb: NewBooking): Promise<Boo
   if (res.meta.changes !== 1) return { ok: false, reason: 'slot_unavailable' };
   return { ok: true, bookingId: res.meta.last_row_id };
 }
+
+export async function cancelBooking(db: D1Database, bookingId: number): Promise<boolean> {
+  const res = await db.prepare(
+    `UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ? AND status = 'confirmed'`
+  ).bind(nowIso(), bookingId).run();
+  return res.meta.changes === 1;
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
-import { createBooking } from '../src/core/booking';
+import { createBooking, cancelBooking } from '../src/core/booking';
+import { getAvailability } from '../src/core/availability';
 import { seedBasic, makeBooking, PLAN_A, PLAN_B, PLAN_D, SLOT_AM, SLOT_PM, AGENCY_1, CAP_B } from './fixtures';
 
 const D = '2026-08-01';
@@ -72,5 +73,44 @@ describe('createBooking', () => {
     await env.DB.prepare(`UPDATE plans SET active = 0 WHERE id = ?`).bind(PLAN_A).run();
     expect((await createBooking(env.DB, makeBooking({ planId: PLAN_A }))).ok).toBe(false);
     expect((await createBooking(env.DB, makeBooking({ planId: PLAN_B, slotTypeId: 99 }))).ok).toBe(false);
+  });
+});
+
+describe('cancelBooking', () => {
+  beforeEach(async () => {
+    await seedBasic(env.DB);
+  });
+
+  it('キャンセルすると cancelled になり cancelled_at が記録される', async () => {
+    const created = await createBooking(env.DB, makeBooking());
+    if (!created.ok) throw new Error('setup failed');
+    expect(await cancelBooking(env.DB, created.bookingId)).toBe(true);
+    const row = await env.DB.prepare(`SELECT status, cancelled_at FROM bookings WHERE id = ?`)
+      .bind(created.bookingId).first<{ status: string; cancelled_at: string | null }>();
+    expect(row?.status).toBe('cancelled');
+    expect(row?.cancelled_at).not.toBeNull();
+  });
+
+  it('自動オープン: プランAの予約キャンセル後、連動クローズされていたプランBに予約できる', async () => {
+    const created = await createBooking(env.DB, makeBooking({ planId: PLAN_A }));
+    if (!created.ok) throw new Error('setup failed');
+    // クローズ確認
+    expect((await createBooking(env.DB, makeBooking({ planId: PLAN_B }))).ok).toBe(false);
+    // キャンセル → オープン
+    await cancelBooking(env.DB, created.bookingId);
+    const avail = await getAvailability(env.DB, D, D);
+    expect(avail.find((a) => a.planId === PLAN_B && a.slotTypeId === SLOT_AM)?.status).toBe('open');
+    expect((await createBooking(env.DB, makeBooking({ planId: PLAN_B }))).ok).toBe(true);
+  });
+
+  it('二重キャンセルは false', async () => {
+    const created = await createBooking(env.DB, makeBooking());
+    if (!created.ok) throw new Error('setup failed');
+    expect(await cancelBooking(env.DB, created.bookingId)).toBe(true);
+    expect(await cancelBooking(env.DB, created.bookingId)).toBe(false);
+  });
+
+  it('存在しないIDは false', async () => {
+    expect(await cancelBooking(env.DB, 9999)).toBe(false);
   });
 });
