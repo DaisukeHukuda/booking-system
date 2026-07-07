@@ -87,135 +87,162 @@ settings.get('/', async (c) => {
   for (const p of plans) planNameById.set(p.id, p.name);
 
   return c.html(
-    <Layout title="設定" active="/admin/settings">
-      <h1>設定</h1>
+    <Layout title="設定" active="/admin/settings" narrow>
+      <div class="page-head">
+        <span class="eyebrow">Settings</span>
+        <h1>設定</h1>
+      </div>
       {okParam === '1' && <p class="msg-ok">{OK_MESSAGE}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
 
       <h2>リソース</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>有効</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {resources.map((r) => (
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td colspan={3}>
-                <form method="post" action={`/admin/settings/resources/${r.id}`}>
-                  <input type="text" name="name" value={r.name} required />{' '}
-                  <label>
-                    <input type="checkbox" name="active" value="1" checked={r.active === 1} /> 有効
-                  </label>{' '}
-                  <button type="submit">更新</button>
-                </form>
-              </td>
+              <th>名前</th>
+              <th>有効</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <form method="post" action="/admin/settings/resources">
-        <label>
-          名前: <input type="text" name="name" required />
-        </label>{' '}
-        <button type="submit">追加</button>
+          </thead>
+          <tbody>
+            {resources.map((r) => (
+              <tr class={r.active ? undefined : 'row-muted'}>
+                <td colspan={3}>
+                  <form class="form-row" method="post" action={`/admin/settings/resources/${r.id}`}>
+                    <input type="text" name="name" value={r.name} required />
+                    <label class="check">
+                      <input type="checkbox" name="active" value="1" checked={r.active === 1} /> 有効
+                    </label>
+                    <button class="btn btn-sm" type="submit">
+                      更新
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <form class="card card-pad form-row" method="post" action="/admin/settings/resources">
+        <div class="field">
+          <label>名前</label>
+          <input type="text" name="name" required />
+        </div>
+        <button class="btn btn-primary" type="submit">
+          追加
+        </button>
       </form>
 
       <h2>時間帯</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>開始時刻</th>
-            <th>表示順</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {slotTypes.map((st) => (
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td colspan={4}>
-                <form method="post" action={`/admin/settings/slot-types/${st.id}`}>
-                  <input type="text" name="name" value={st.name} required />{' '}
-                  <input type="text" name="start_time" value={st.start_time} placeholder="09:00" required />{' '}
-                  <input type="number" name="sort_order" value={st.sort_order} />{' '}
-                  <button type="submit">更新</button>
-                </form>
-              </td>
+              <th>名前</th>
+              <th>開始時刻</th>
+              <th class="r">表示順</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <form method="post" action="/admin/settings/slot-types">
-        <label>
-          名前: <input type="text" name="name" required />
-        </label>{' '}
-        <label>
-          開始時刻: <input type="text" name="start_time" placeholder="09:00" required />
-        </label>{' '}
-        <label>
-          表示順: <input type="number" name="sort_order" value="0" />
-        </label>{' '}
-        <button type="submit">追加</button>
+          </thead>
+          <tbody>
+            {slotTypes.map((st) => (
+              <tr>
+                <td colspan={4}>
+                  <form class="form-row" method="post" action={`/admin/settings/slot-types/${st.id}`}>
+                    <input type="text" name="name" value={st.name} required />
+                    <input type="text" name="start_time" value={st.start_time} placeholder="09:00" required class="w-sm" />
+                    <input type="number" name="sort_order" value={st.sort_order} class="w-sm" />
+                    <button class="btn btn-sm" type="submit">
+                      更新
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <form class="card card-pad form-row" method="post" action="/admin/settings/slot-types">
+        <div class="field">
+          <label>名前</label>
+          <input type="text" name="name" required />
+        </div>
+        <div class="field">
+          <label>開始時刻</label>
+          <input type="text" name="start_time" placeholder="09:00" required class="w-sm" />
+        </div>
+        <div class="field">
+          <label>表示順</label>
+          <input type="number" name="sort_order" value="0" class="w-sm" />
+        </div>
+        <button class="btn btn-primary" type="submit">
+          追加
+        </button>
       </form>
 
       <h2>手動クローズ</h2>
-      <form method="post" action="/admin/settings/closures">
-        <label>
-          日付: <input type="date" name="date" required />
-        </label>{' '}
-        <label>
-          時間帯:{' '}
+      <form class="card card-pad form-row" method="post" action="/admin/settings/closures">
+        <div class="field">
+          <label>日付</label>
+          <input type="date" name="date" required />
+        </div>
+        <div class="field">
+          <label>時間帯</label>
           <select name="slot_type_id" required>
             {slotTypes.map((st) => (
               <option value={st.id}>{st.name}</option>
             ))}
           </select>
-        </label>{' '}
-        <label>
-          プラン:{' '}
+        </div>
+        <div class="field">
+          <label>プラン</label>
           <select name="plan_id">
             <option value="">全プラン</option>
             {plans.map((p) => (
               <option value={p.id}>{p.name}</option>
             ))}
           </select>
-        </label>{' '}
-        <label>
-          理由: <input type="text" name="reason" />
-        </label>{' '}
-        <button type="submit">登録</button>
+        </div>
+        <div class="field">
+          <label>理由</label>
+          <input type="text" name="reason" />
+        </div>
+        <button class="btn btn-primary" type="submit">
+          登録
+        </button>
       </form>
 
-      <table>
-        <thead>
-          <tr>
-            <th>日付</th>
-            <th>時間帯</th>
-            <th>プラン</th>
-            <th>理由</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {closures.map((cl) => (
+      <div class="tbl-wrap" style="margin-top:12px">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td>{cl.date}</td>
-              <td>{slotTypeNameById.get(cl.slot_type_id) ?? ''}</td>
-              <td>{cl.plan_id === null ? '全プラン' : planNameById.get(cl.plan_id) ?? ''}</td>
-              <td>{cl.reason}</td>
-              <td>
-                <form method="post" action={`/admin/settings/closures/${cl.id}/delete`}>
-                  <button type="submit">削除</button>
-                </form>
-              </td>
+              <th>日付</th>
+              <th>時間帯</th>
+              <th>プラン</th>
+              <th>理由</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {closures.map((cl) => (
+              <tr>
+                <td class="num">{cl.date}</td>
+                <td>{slotTypeNameById.get(cl.slot_type_id) ?? ''}</td>
+                <td>{cl.plan_id === null ? '全プラン' : planNameById.get(cl.plan_id) ?? ''}</td>
+                <td>{cl.reason}</td>
+                <td class="actions">
+                  <form method="post" action={`/admin/settings/closures/${cl.id}/delete`}>
+                    <button class="btn btn-sm btn-danger" type="submit">
+                      解除
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Layout>
   );
 });

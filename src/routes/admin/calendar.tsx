@@ -3,7 +3,14 @@ import { getAvailability } from '../../core/availability';
 import { createBooking, cancelBooking, changeBooking, approveBooking, denyBooking } from '../../core/booking';
 import { sendBookingNotification } from '../../core/notify';
 import type { Bindings, BookingStatus, PaymentMethod, SlotAvailability } from '../../types';
-import { Layout, STATUS_LABELS, STATUS_CLASSES, BOOKING_STATUS_LABELS, PAYMENT_LABELS } from './ui';
+import {
+  Layout,
+  STATUS_LABELS,
+  STATUS_CELL_CLASSES,
+  BOOKING_STATUS_LABELS,
+  BOOKING_BADGE_CLASSES,
+  PAYMENT_LABELS
+} from './ui';
 
 export const calendar = new Hono<{ Bindings: Bindings }>();
 
@@ -88,6 +95,24 @@ function formatStartTime(startTime: string): string {
 }
 
 const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+function shiftDate(date: string, delta: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDateLong(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const weekday = WEEKDAY_LABELS[new Date(`${date}T00:00:00Z`).getUTCDay()];
+  return `${y}年${m}月${d}日（${weekday}）`;
+}
+
+function formatMD(date: string): string {
+  const [, m, d] = date.split('-');
+  const weekday = WEEKDAY_LABELS[new Date(`${date}T00:00:00Z`).getUTCDay()];
+  return `${Number(m)}/${Number(d)}（${weekday}）`;
+}
 
 calendar.get('/', async (c) => {
   const monthParam = c.req.query('month');
@@ -282,170 +307,238 @@ calendar.get('/day/:date', async (c) => {
     capacityOverrideByPlanSlot.set(`${row.slot_type_id}|${row.plan_id}`, row.capacity);
   }
 
+  const prevDate = shiftDate(date, -1);
+  const nextDate = shiftDate(date, 1);
+  const totalPax = bookings
+    .filter((b) => b.status === 'confirmed' || b.status === 'requested')
+    .reduce((sum, b) => sum + b.party_size, 0);
+  const activeCount = bookings.filter((b) => b.status === 'confirmed' || b.status === 'requested').length;
+
   return c.html(
     <Layout title={date} active="/admin">
-      <h1>{date}</h1>
-      <p>
-        <a href={`/admin?month=${month}`}>&laquo; カレンダーに戻る</a>
-      </p>
+      <div class="page-head">
+        <span class="eyebrow">Day / {date}</span>
+        <h1>{formatDateLong(date)}</h1>
+        <span class="sub">
+          <a href={`/admin?month=${month}`}>&laquo; 台帳へ戻る</a>
+        </span>
+      </div>
+      <div class="cal-nav">
+        <a class="btn" href={`/admin/day/${prevDate}`}>
+          &laquo; {formatMD(prevDate)}
+        </a>
+        <a class="btn" href={`/admin/day/${nextDate}`}>
+          {formatMD(nextDate)} &raquo;
+        </a>
+      </div>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
 
       <h2>空き状況</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>時間帯</th>
-            {plans.map((p) => (
-              <th>{p.name}</th>
+      <div class="tbl-wrap">
+        <table class="tbl avail">
+          <thead>
+            <tr>
+              <th>時間帯</th>
+              {plans.map((p) => (
+                <th>{p.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {slotTypes.map((st) => (
+              <tr>
+                <th class="nowrap">{st.name}</th>
+                {plans.map((p) => {
+                  const a = byPlanSlot.get(`${st.id}|${p.id}`);
+                  if (!a) return <td></td>;
+                  const label = STATUS_LABELS[a.status];
+                  const cellClass = STATUS_CELL_CLASSES[a.status];
+                  const overrideCapacity = capacityOverrideByPlanSlot.get(`${st.id}|${p.id}`);
+                  return (
+                    <td>
+                      <span class={`cell ${cellClass}`}>
+                        <span class="state">{label}</span>
+                        {a.status === 'open' && <span class="zan">残{a.remaining}</span>}
+                        {a.status === 'full' && (
+                          <span class="zan">
+                            {a.booked}/{a.capacity}
+                          </span>
+                        )}
+                        {a.status === 'linked_closed' && (
+                          <span class="why">
+                            原因: {a.blockingPlanIds.map((id) => planNameById.get(id) ?? '').join(',')}
+                          </span>
+                        )}
+                        <form class="cap-form" method="post" action="/admin/capacity">
+                          <input type="hidden" name="date" value={date} />
+                          <input type="hidden" name="plan_id" value={p.id} />
+                          <input type="hidden" name="slot_type_id" value={st.id} />
+                          <label class="small">定員</label>
+                          <input
+                            type="number"
+                            name="capacity"
+                            min="0"
+                            value={overrideCapacity !== undefined ? overrideCapacity : ''}
+                          />
+                          <button class="btn" type="submit">
+                            変更
+                          </button>
+                        </form>
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {slotTypes.map((st) => (
-            <tr>
-              <td>{st.name}</td>
-              {plans.map((p) => {
-                const a = byPlanSlot.get(`${st.id}|${p.id}`);
-                if (!a) return <td></td>;
-                const label = STATUS_LABELS[a.status];
-                const cls = STATUS_CLASSES[a.status];
-                let extra = '';
-                if (a.status === 'open') extra = ` 残${a.remaining}`;
-                if (a.status === 'linked_closed') {
-                  const names = a.blockingPlanIds.map((id) => planNameById.get(id) ?? '').join(',');
-                  extra = `(${names})`;
-                }
-                const overrideCapacity = capacityOverrideByPlanSlot.get(`${st.id}|${p.id}`);
-                return (
-                  <td>
-                    <span class={cls}>
-                      {label}
-                      {extra}
-                    </span>
-                    <form method="post" action="/admin/capacity">
-                      <input type="hidden" name="date" value={date} />
-                      <input type="hidden" name="plan_id" value={p.id} />
-                      <input type="hidden" name="slot_type_id" value={st.id} />
-                      <input
-                        type="number"
-                        name="capacity"
-                        min="0"
-                        style="width: 3.5em"
-                        value={overrideCapacity !== undefined ? overrideCapacity : ''}
-                      />
-                      <button type="submit">定員</button>
-                    </form>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
 
-      <h2>予約一覧</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>時間帯</th>
-            <th>プラン</th>
-            <th>顧客名</th>
-            <th>電話</th>
-            <th>人数</th>
-            <th>金額</th>
-            <th>支払方法</th>
-            <th>代理店</th>
-            <th>状態</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bookings.map((b) => (
+      <h2>
+        予約一覧{' '}
+        <span class="muted small">
+          {activeCount}件・{totalPax}名
+        </span>
+      </h2>
+      <div class="tbl-wrap tbl-cards">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td>{b.slot_name}</td>
-              <td>{b.plan_name}</td>
-              <td>{b.customer_name}</td>
-              <td>{b.customer_phone}</td>
-              <td>大{b.num_adults}小{b.num_children}</td>
-              <td>{b.total_amount}</td>
-              <td>{PAYMENT_LABELS[b.payment_method]}</td>
-              <td>{b.agency_name ?? '自社'}</td>
-              <td>{BOOKING_STATUS_LABELS[b.status]}</td>
-              <td>
-                {b.status === 'confirmed' && (
-                  <>
-                    <a href={`/admin/bookings/${b.id}/edit`}>変更</a>{' '}
-                    <form method="post" action={`/admin/bookings/${b.id}/cancel`}>
-                      <input type="hidden" name="date" value={date} />
-                      <button type="submit">キャンセル</button>
-                    </form>
-                  </>
-                )}
-                {b.status === 'requested' && (
-                  <>
-                    <form method="post" action={`/admin/bookings/${b.id}/approve`}>
-                      <input type="hidden" name="back" value={`/admin/day/${date}`} />
-                      <button type="submit">承認</button>
-                    </form>
-                    <form method="post" action={`/admin/bookings/${b.id}/deny`}>
-                      <input type="hidden" name="back" value={`/admin/day/${date}`} />
-                      <button type="submit">否認</button>
-                    </form>
-                  </>
-                )}
-              </td>
+              <th>時間帯</th>
+              <th>プラン</th>
+              <th>顧客</th>
+              <th>電話</th>
+              <th>人数</th>
+              <th class="r">金額</th>
+              <th>支払</th>
+              <th>経路</th>
+              <th>状態</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {bookings.map((b) => {
+              const muted = b.status === 'cancelled' || b.status === 'denied';
+              return (
+                <tr class={muted ? 'row-muted' : undefined}>
+                  <td data-label="時間帯" class="num">
+                    {b.slot_name}
+                  </td>
+                  <td data-label="プラン">{b.plan_name}</td>
+                  <td data-label="顧客">{b.customer_name}</td>
+                  <td data-label="電話" class="num">
+                    {b.customer_phone}
+                  </td>
+                  <td data-label="人数">
+                    大{b.num_adults} 小{b.num_children}
+                  </td>
+                  <td data-label="金額" class="num r">
+                    {b.total_amount}
+                  </td>
+                  <td data-label="支払">{PAYMENT_LABELS[b.payment_method]}</td>
+                  <td data-label="経路">{b.agency_name ?? '自社'}</td>
+                  <td data-label="状態">
+                    <span class={`badge ${BOOKING_BADGE_CLASSES[b.status]}`}>{BOOKING_STATUS_LABELS[b.status]}</span>
+                  </td>
+                  <td data-label="" class="actions">
+                    {b.status === 'confirmed' && (
+                      <>
+                        <a class="btn btn-sm" href={`/admin/bookings/${b.id}/edit`}>
+                          変更
+                        </a>{' '}
+                        <form method="post" action={`/admin/bookings/${b.id}/cancel`}>
+                          <input type="hidden" name="date" value={date} />
+                          <button class="btn btn-sm btn-danger" type="submit">
+                            キャンセル
+                          </button>
+                        </form>
+                      </>
+                    )}
+                    {b.status === 'requested' && (
+                      <>
+                        <form method="post" action={`/admin/bookings/${b.id}/approve`}>
+                          <input type="hidden" name="back" value={`/admin/day/${date}`} />
+                          <button class="btn btn-sm btn-ok" type="submit">
+                            承認
+                          </button>
+                        </form>{' '}
+                        <form method="post" action={`/admin/bookings/${b.id}/deny`}>
+                          <input type="hidden" name="back" value={`/admin/day/${date}`} />
+                          <button class="btn btn-sm btn-danger" type="submit">
+                            否認
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <h2>新規予約登録</h2>
-      <form method="post" action="/admin/bookings">
+      <form class="card card-pad" method="post" action="/admin/bookings">
         <input type="hidden" name="date" value={date} />
-        <label>
-          プラン:{' '}
-          <select name="plan_id">
-            {plans.map((p) => (
-              <option value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          時間帯:{' '}
-          <select name="slot_type_id">
-            {slotTypes.map((st) => (
-              <option value={st.id}>{st.name}</option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          顧客名: <input type="text" name="customer_name" required />
-        </label>{' '}
-        <label>
-          電話: <input type="text" name="customer_phone" />
-        </label>{' '}
-        <label>
-          大人人数: <input type="number" name="num_adults" min="0" value="1" />
-        </label>{' '}
-        <label>
-          小人人数: <input type="number" name="num_children" min="0" value="0" />
-        </label>{' '}
-        <label>
-          金額（空欄でプラン単価から自動計算）: <input type="number" name="total_amount" min="0" />
-        </label>{' '}
-        <label>
-          支払方法:{' '}
-          <select name="payment_method">
-            {Object.entries(PAYMENT_LABELS).map(([key, label]) => (
-              <option value={key}>{label}</option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          備考: <textarea name="notes"></textarea>
-        </label>{' '}
-        <button type="submit">登録</button>
+        <div class="form-grid">
+          <div class="field">
+            <label>プラン</label>
+            <select name="plan_id">
+              {plans.map((p) => (
+                <option value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>時間帯</label>
+            <select name="slot_type_id">
+              {slotTypes.map((st) => (
+                <option value={st.id}>{st.name}</option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>顧客名</label>
+            <input type="text" name="customer_name" required />
+          </div>
+          <div class="field">
+            <label>電話</label>
+            <input type="text" name="customer_phone" />
+          </div>
+          <div class="field">
+            <label>大人人数</label>
+            <input type="number" name="num_adults" min="0" value="1" />
+          </div>
+          <div class="field">
+            <label>小人人数</label>
+            <input type="number" name="num_children" min="0" value="0" />
+          </div>
+          <div class="field">
+            <label>
+              金額 <span class="hint">空欄でプラン単価から自動計算</span>
+            </label>
+            <input type="number" name="total_amount" min="0" />
+          </div>
+          <div class="field">
+            <label>支払方法</label>
+            <select name="payment_method">
+              {Object.entries(PAYMENT_LABELS).map(([key, label]) => (
+                <option value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div class="field" style="flex:1">
+            <label>備考</label>
+            <textarea name="notes"></textarea>
+          </div>
+          <button class="btn btn-primary btn-lg" type="submit">
+            登録
+          </button>
+        </div>
       </form>
     </Layout>
   );
@@ -467,53 +560,69 @@ calendar.get('/requests', async (c) => {
 
   return c.html(
     <Layout title="承認待ち" active="/admin/requests">
-      <h1>承認待ち</h1>
+      <div class="page-head">
+        <span class="eyebrow">Requests</span>
+        <h1>
+          承認待ち <span class="num">{requests.length}</span>件
+        </h1>
+        <span class="sub">リクエスト予約は承認するまで席を確保しません</span>
+      </div>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
 
       {requests.length === 0 ? (
         <p>承認待ちはありません</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>参加日</th>
-              <th>時刻</th>
-              <th>プラン</th>
-              <th>顧客</th>
-              <th>人数</th>
-              <th>金額</th>
-              <th>代理店</th>
-              <th>申込日時</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((b) => (
+        <div class="tbl-wrap tbl-cards">
+          <table class="tbl">
+            <thead>
               <tr>
-                <td>
-                  <a href={`/admin/day/${b.date}`}>{b.date}</a>
-                </td>
-                <td>{b.slot_name}</td>
-                <td>{b.plan_name}</td>
-                <td>{b.customer_name}</td>
-                <td>大{b.num_adults}小{b.num_children}</td>
-                <td>{b.total_amount}</td>
-                <td>{b.agency_name ?? '自社'}</td>
-                <td>{b.created_at}</td>
-                <td>
-                  <form method="post" action={`/admin/bookings/${b.id}/approve`}>
-                    <input type="hidden" name="back" value="/admin/requests" />
-                    <button type="submit">承認</button>
-                  </form>
-                  <form method="post" action={`/admin/bookings/${b.id}/deny`}>
-                    <input type="hidden" name="back" value="/admin/requests" />
-                    <button type="submit">否認</button>
-                  </form>
-                </td>
+                <th>受付日時</th>
+                <th>利用日 / 時間帯</th>
+                <th>プラン</th>
+                <th>顧客</th>
+                <th>人数</th>
+                <th class="r">金額</th>
+                <th>経路</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {requests.map((b) => (
+                <tr>
+                  <td data-label="受付日時" class="num">
+                    {b.created_at}
+                  </td>
+                  <td data-label="利用日">
+                    <a href={`/admin/day/${b.date}`}>{b.date}</a> {b.slot_name}
+                  </td>
+                  <td data-label="プラン">{b.plan_name}</td>
+                  <td data-label="顧客">{b.customer_name}</td>
+                  <td data-label="人数">
+                    大{b.num_adults} 小{b.num_children}
+                  </td>
+                  <td data-label="金額" class="num r">
+                    {b.total_amount}
+                  </td>
+                  <td data-label="経路">{b.agency_name ?? '自社'}</td>
+                  <td data-label="" class="actions">
+                    <form method="post" action={`/admin/bookings/${b.id}/approve`}>
+                      <input type="hidden" name="back" value="/admin/requests" />
+                      <button class="btn btn-sm btn-ok" type="submit">
+                        承認
+                      </button>
+                    </form>{' '}
+                    <form method="post" action={`/admin/bookings/${b.id}/deny`}>
+                      <input type="hidden" name="back" value="/admin/requests" />
+                      <button class="btn btn-sm btn-danger" type="submit">
+                        否認
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </Layout>
   );
@@ -666,54 +775,72 @@ calendar.get('/bookings/:id/edit', async (c) => {
 
   return c.html(
     <Layout title="予約変更" active="/admin">
-      <h1>予約変更</h1>
-      <p>
-        <a href={`/admin/day/${booking.date}`}>&laquo; {booking.date} に戻る</a>
-      </p>
+      <div class="page-head">
+        <span class="eyebrow">Booking / Edit</span>
+        <h1>予約変更</h1>
+        <span class="sub">
+          <a href={`/admin/day/${booking.date}`}>&laquo; {booking.date} に戻る</a>
+        </span>
+      </div>
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
-      <form method="post" action={`/admin/bookings/${booking.id}`}>
-        <label>
-          日付: <input type="date" name="date" value={booking.date} />
-        </label>{' '}
-        <label>
-          プラン:{' '}
-          <select name="plan_id">
-            {plans.map((p) => (
-              <option value={p.id} selected={p.id === booking.plan_id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          時間帯:{' '}
-          <select name="slot_type_id">
-            {slotTypes.map((st) => (
-              <option value={st.id} selected={st.id === booking.slot_type_id}>
-                {st.name}
-              </option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          顧客名: <input type="text" name="customer_name" value={booking.customer_name} required />
-        </label>{' '}
-        <label>
-          電話: <input type="text" name="customer_phone" value={booking.customer_phone} />
-        </label>{' '}
-        <label>
-          大人人数: <input type="number" name="num_adults" min="0" value={booking.num_adults} />
-        </label>{' '}
-        <label>
-          小人人数: <input type="number" name="num_children" min="0" value={booking.num_children} />
-        </label>{' '}
-        <label>
-          金額（空欄でプラン単価から自動計算）: <input type="number" name="total_amount" min="0" value={booking.total_amount} />
-        </label>{' '}
-        <label>
-          備考: <textarea name="notes">{booking.notes}</textarea>
-        </label>{' '}
-        <button type="submit">変更を保存</button>
+      <form class="card card-pad" method="post" action={`/admin/bookings/${booking.id}`}>
+        <div class="form-grid">
+          <div class="field">
+            <label>日付</label>
+            <input type="date" name="date" value={booking.date} />
+          </div>
+          <div class="field">
+            <label>プラン</label>
+            <select name="plan_id">
+              {plans.map((p) => (
+                <option value={p.id} selected={p.id === booking.plan_id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>時間帯</label>
+            <select name="slot_type_id">
+              {slotTypes.map((st) => (
+                <option value={st.id} selected={st.id === booking.slot_type_id}>
+                  {st.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>顧客名</label>
+            <input type="text" name="customer_name" value={booking.customer_name} required />
+          </div>
+          <div class="field">
+            <label>電話</label>
+            <input type="text" name="customer_phone" value={booking.customer_phone} />
+          </div>
+          <div class="field">
+            <label>大人人数</label>
+            <input type="number" name="num_adults" min="0" value={booking.num_adults} />
+          </div>
+          <div class="field">
+            <label>小人人数</label>
+            <input type="number" name="num_children" min="0" value={booking.num_children} />
+          </div>
+          <div class="field">
+            <label>
+              金額 <span class="hint">空欄でプラン単価から自動計算</span>
+            </label>
+            <input type="number" name="total_amount" min="0" value={booking.total_amount} />
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div class="field" style="flex:1">
+            <label>備考</label>
+            <textarea name="notes">{booking.notes}</textarea>
+          </div>
+          <button class="btn btn-primary btn-lg" type="submit">
+            変更を保存
+          </button>
+        </div>
       </form>
     </Layout>
   );

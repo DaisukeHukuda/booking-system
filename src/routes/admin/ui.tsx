@@ -10,7 +10,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: '/admin/settings', label: '設定' }
 ];
 
-export const Layout = (props: { title: string; active?: string; children: Child }) => (
+export const Layout = (props: { title: string; active?: string; narrow?: boolean; children: Child }) => (
   <html lang="ja">
     <head>
       <meta charset="utf-8" />
@@ -40,7 +40,7 @@ export const Layout = (props: { title: string; active?: string; children: Child 
           </div>
         </div>
       </header>
-      <main class="page">{props.children}</main>
+      <main class={`page${props.narrow ? ' page-narrow' : ''}`}>{props.children}</main>
     </body>
   </html>
 );
@@ -59,11 +59,26 @@ export const STATUS_CLASSES: Record<SlotStatus, string> = {
   manual_closed: 'st-manual'
 };
 
+// 日別詳細ページの空き状況マトリクス（c-open/c-full/c-linked/c-manual）用
+export const STATUS_CELL_CLASSES: Record<SlotStatus, string> = {
+  open: 'c-open',
+  full: 'c-full',
+  linked_closed: 'c-linked',
+  manual_closed: 'c-manual'
+};
+
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   requested: 'リクエスト',
   confirmed: '確定',
   cancelled: '取消',
   denied: '否認'
+};
+
+export const BOOKING_BADGE_CLASSES: Record<BookingStatus, string> = {
+  requested: 'bk-request',
+  confirmed: 'bk-confirmed',
+  cancelled: 'bk-cancelled',
+  denied: 'bk-denied'
 };
 
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = {

@@ -86,80 +86,101 @@ stats.get('/', async (c) => {
   const nextMonth = `${next.year}-${pad2(next.month)}`;
 
   return c.html(
-    <Layout title="集計" active="/admin/stats">
-      <h1>
-        {year}年{monthNum}月の集計
-      </h1>
-      <p>
-        <a href={`/admin/stats?month=${prevMonth}`}>&laquo; 前月</a>{' '}
-        <a href={`/admin/stats?month=${nextMonth}`}>次月 &raquo;</a>
-      </p>
+    <Layout title="集計" active="/admin/stats" narrow>
+      <div class="page-head">
+        <span class="eyebrow">
+          Stats / {month}
+        </span>
+        <h1>
+          {year}年{monthNum}月の集計
+        </h1>
+      </div>
+      <div class="cal-nav">
+        <a class="btn" href={`/admin/stats?month=${prevMonth}`}>
+          &laquo; 前月
+        </a>
+        <a class="btn" href={`/admin/stats?month=${nextMonth}`}>
+          次月 &raquo;
+        </a>
+      </div>
 
       <h2>プラン別</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>プラン</th>
-            <th>件数</th>
-            <th>人数</th>
-            <th>金額</th>
-          </tr>
-        </thead>
-        <tbody>
-          {planStats.map((r) => (
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td>{r.name}</td>
-              <td>{r.cnt}件</td>
-              <td>{r.pax}名</td>
-              <td>{r.amount}円</td>
+              <th>プラン</th>
+              <th class="r">件数</th>
+              <th class="r">人数</th>
+              <th class="r">金額</th>
             </tr>
-          ))}
-          <tr>
-            <td>合計</td>
-            <td>{planTotal.cnt}件</td>
-            <td>{planTotal.pax}名</td>
-            <td>{planTotal.amount}円</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {planStats.map((r) => (
+              <tr>
+                <td>{r.name}</td>
+                <td class="num r">{r.cnt}件</td>
+                <td class="num r">{r.pax}名</td>
+                <td class="num r">{r.amount}円</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>合計</td>
+              <td class="num r">{planTotal.cnt}件</td>
+              <td class="num r">{planTotal.pax}名</td>
+              <td class="num r">{planTotal.amount}円</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
       <h2>代理店別</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>経路</th>
-            <th>件数</th>
-            <th>人数</th>
-            <th>金額</th>
-          </tr>
-        </thead>
-        <tbody>
-          {agencyStats.map((r) => (
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td>{r.name}</td>
-              <td>{r.cnt}件</td>
-              <td>{r.pax}名</td>
-              <td>{r.amount}円</td>
+              <th>経路</th>
+              <th class="r">件数</th>
+              <th class="r">人数</th>
+              <th class="r">金額</th>
             </tr>
-          ))}
-          <tr>
-            <td>合計</td>
-            <td>{agencyTotal.cnt}件</td>
-            <td>{agencyTotal.pax}名</td>
-            <td>{agencyTotal.amount}円</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {agencyStats.map((r) => (
+              <tr>
+                <td>{r.name}</td>
+                <td class="num r">{r.cnt}件</td>
+                <td class="num r">{r.pax}名</td>
+                <td class="num r">{r.amount}円</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>合計</td>
+              <td class="num r">{agencyTotal.cnt}件</td>
+              <td class="num r">{agencyTotal.pax}名</td>
+              <td class="num r">{agencyTotal.amount}円</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
       <h2>CSVエクスポート</h2>
-      <form method="get" action="/admin/stats/export.csv">
-        <label>
-          開始日: <input type="date" name="from" value={from} />
-        </label>{' '}
-        <label>
-          終了日: <input type="date" name="to" value={to} />
-        </label>{' '}
-        <button type="submit">CSVダウンロード</button>
+      <form class="card card-pad form-row" method="get" action="/admin/stats/export.csv">
+        <div class="field">
+          <label>開始日</label>
+          <input type="date" name="from" value={from} />
+        </div>
+        <div class="field">
+          <label>終了日</label>
+          <input type="date" name="to" value={to} />
+        </div>
+        <button class="btn btn-primary" type="submit">
+          CSVダウンロード
+        </button>
       </form>
     </Layout>
   );

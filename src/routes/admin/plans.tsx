@@ -91,54 +91,81 @@ plans.get('/', async (c) => {
 
   return c.html(
     <Layout title="プラン管理" active="/admin/plans">
-      <h1>プラン管理</h1>
+      <div class="page-head">
+        <span class="eyebrow">Plans</span>
+        <h1>プラン管理</h1>
+      </div>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
 
-      <table>
-        <thead>
-          <tr>
-            <th>名前</th>
-            <th>価格</th>
-            <th>所要時間</th>
-            <th>有効</th>
-            <th>割当リソース</th>
-            <th>時間帯別定員</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {planRows.map((p) => (
+      <div class="tbl-wrap tbl-cards">
+        <table class="tbl">
+          <thead>
             <tr>
-              <td>{p.name}</td>
-              <td>大人{p.price_adult}/小人{p.price_child}</td>
-              <td>{p.duration_min}分</td>
-              <td>{p.active ? '有効' : '無効'}</td>
-              <td>{(resourceNamesByPlan.get(p.id) ?? []).join(', ')}</td>
-              <td>{(slotLabelsByPlan.get(p.id) ?? []).join(', ')}</td>
-              <td>
-                <a href={`/admin/plans/${p.id}/edit`}>編集</a>
-              </td>
+              <th>名前</th>
+              <th class="r">大人</th>
+              <th class="r">小人</th>
+              <th class="r">所要</th>
+              <th>リソース</th>
+              <th>時間帯別定員</th>
+              <th>有効</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {planRows.map((p) => (
+              <tr class={p.active ? undefined : 'row-muted'}>
+                <td data-label="名前">{p.name}</td>
+                <td data-label="大人" class="num r">
+                  {p.price_adult}
+                </td>
+                <td data-label="小人" class="num r">
+                  {p.price_child}
+                </td>
+                <td data-label="所要" class="num r">
+                  {p.duration_min}分
+                </td>
+                <td data-label="リソース">{(resourceNamesByPlan.get(p.id) ?? []).join(' / ')}</td>
+                <td data-label="定員" class="num">
+                  {(slotLabelsByPlan.get(p.id) ?? []).join(' / ')}
+                </td>
+                <td data-label="有効">
+                  <span class={`badge ${p.active ? 'st-open' : 'st-manual'}`}>{p.active ? '有効' : '無効'}</span>
+                </td>
+                <td data-label="" class="actions">
+                  <a class="btn btn-sm" href={`/admin/plans/${p.id}/edit`}>
+                    編集
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <h2>新規作成</h2>
-      <form method="post" action="/admin/plans">
-        <label>
-          名前: <input type="text" name="name" required />
-        </label>{' '}
-        <label>
-          大人料金: <input type="number" name="price_adult" min="0" value="0" />
-        </label>{' '}
-        <label>
-          小人料金: <input type="number" name="price_child" min="0" value="0" />
-        </label>{' '}
-        <label>
-          所要時間（分）: <input type="number" name="duration_min" min="1" value="120" />
-        </label>{' '}
-        <button type="submit">作成</button>
+      <form class="card card-pad" method="post" action="/admin/plans">
+        <div class="form-grid">
+          <div class="field">
+            <label>名前</label>
+            <input type="text" name="name" required />
+          </div>
+          <div class="field">
+            <label>大人料金（円）</label>
+            <input type="number" name="price_adult" min="0" value="0" />
+          </div>
+          <div class="field">
+            <label>小人料金（円）</label>
+            <input type="number" name="price_child" min="0" value="0" />
+          </div>
+          <div class="field">
+            <label>所要時間（分）</label>
+            <input type="number" name="duration_min" min="1" value="120" />
+          </div>
+          <button class="btn btn-primary" type="submit">
+            作成
+          </button>
+        </div>
       </form>
     </Layout>
   );
@@ -196,70 +223,109 @@ plans.get('/:id/edit', async (c) => {
 
   return c.html(
     <Layout title="プラン編集" active="/admin/plans">
-      <h1>プラン編集</h1>
-      <p>
-        <a href="/admin/plans">&laquo; プラン一覧に戻る</a>
-      </p>
+      <div class="page-head">
+        <span class="eyebrow">Plans / Edit</span>
+        <h1>プラン編集</h1>
+        <span class="sub">
+          <a href="/admin/plans">&laquo; プラン一覧に戻る</a>
+        </span>
+      </div>
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
 
-      <form method="post" action={`/admin/plans/${plan.id}`}>
-        <label>
-          名前: <input type="text" name="name" value={plan.name} required />
-        </label>{' '}
-        <label>
-          説明: <textarea name="description">{plan.description}</textarea>
-        </label>{' '}
-        <label>
-          大人料金: <input type="number" name="price_adult" min="0" value={plan.price_adult} />
-        </label>{' '}
-        <label>
-          小人料金: <input type="number" name="price_child" min="0" value={plan.price_child} />
-        </label>{' '}
-        <label>
-          所要時間（分）: <input type="number" name="duration_min" min="1" value={plan.duration_min} />
-        </label>{' '}
-        <label>
-          表示順: <input type="number" name="sort_order" min="0" value={plan.sort_order} />
-        </label>{' '}
-        <label>
-          <input type="checkbox" name="active" value="1" checked={plan.active === 1} /> 有効
-        </label>
-
-        <h2>割当リソース</h2>
-        {resources.map((r) => (
-          <label>
-            <input
-              type="checkbox"
-              name="resource_ids[]"
-              value={r.id}
-              checked={assignedResourceIds.has(r.id)}
-            />{' '}
-            {r.name}
+      <form class="card card-pad" method="post" action={`/admin/plans/${plan.id}`}>
+        <div class="form-grid">
+          <div class="field">
+            <label>名前</label>
+            <input type="text" name="name" value={plan.name} required />
+          </div>
+          <div class="field">
+            <label>大人料金（円）</label>
+            <input type="number" name="price_adult" min="0" value={plan.price_adult} />
+          </div>
+          <div class="field">
+            <label>小人料金（円）</label>
+            <input type="number" name="price_child" min="0" value={plan.price_child} />
+          </div>
+          <div class="field">
+            <label>所要時間（分）</label>
+            <input type="number" name="duration_min" min="1" value={plan.duration_min} />
+          </div>
+          <div class="field">
+            <label>表示順</label>
+            <input type="number" name="sort_order" min="0" value={plan.sort_order} />
+          </div>
+          <div class="field">
+            <label>説明</label>
+            <textarea name="description">{plan.description}</textarea>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <label class="check">
+            <input type="checkbox" name="active" value="1" checked={plan.active === 1} /> 有効
           </label>
-        ))}
+        </div>
 
-        <h2>時間帯別定員</h2>
-        {slotTypes.map((st) => {
-          const current = planSlotById.get(st.id);
-          return (
-            <div>
-              <label>
-                <input
-                  type="checkbox"
-                  name={`slot_active_${st.id}`}
-                  value="1"
-                  checked={!!current && current.active === 1}
-                />{' '}
-                {st.name} 催行
-              </label>{' '}
-              <label>
-                定員: <input type="number" name={`slot_capacity_${st.id}`} min="1" value={current?.capacity ?? ''} />
-              </label>
-            </div>
-          );
-        })}
+        <h3>使用リソース</h3>
+        <div class="form-row">
+          {resources.map((r) => (
+            <label class="check">
+              <input type="checkbox" name="resource_ids[]" value={r.id} checked={assignedResourceIds.has(r.id)} />{' '}
+              {r.name}
+            </label>
+          ))}
+        </div>
 
-        <button type="submit">更新</button>
+        <h3>時間帯ごとの催行と定員</h3>
+        <div class="tbl-wrap" style="max-width:520px">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>時間帯</th>
+                <th>催行</th>
+                <th>定員</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slotTypes.map((st) => {
+                const current = planSlotById.get(st.id);
+                return (
+                  <tr>
+                    <td>{st.name}</td>
+                    <td>
+                      <label class="check">
+                        <input
+                          type="checkbox"
+                          name={`slot_active_${st.id}`}
+                          value="1"
+                          checked={!!current && current.active === 1}
+                        />{' '}
+                        催行する
+                      </label>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        name={`slot_capacity_${st.id}`}
+                        min="1"
+                        value={current?.capacity ?? ''}
+                        class="w-sm"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="form-row" style="margin-top:14px">
+          <button class="btn btn-primary btn-lg" type="submit">
+            更新
+          </button>
+          <a class="btn btn-lg" href="/admin/plans">
+            キャンセル
+          </a>
+        </div>
       </form>
     </Layout>
   );

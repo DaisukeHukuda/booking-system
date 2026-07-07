@@ -4,7 +4,7 @@ import { getAvailability } from '../core/availability';
 import { createBooking, cancelBookingForAgency } from '../core/booking';
 import { sendBookingNotification } from '../core/notify';
 import type { Bindings, PaymentMethod } from '../types';
-import { BOOKING_STATUS_LABELS } from './admin/ui';
+import { BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES } from './admin/ui';
 
 export const agency = new Hono<{ Bindings: Bindings }>();
 
@@ -23,16 +23,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid: '入力内容に誤りがあります'
 };
 
-const PAGE_STYLE = `
-  body { font-family: sans-serif; margin: 0; padding: 0; }
-  header { background: #f4f4f4; border-bottom: 1px solid #ccc; padding: 0.5rem 1rem; }
-  main { padding: 1rem; }
-  table { border-collapse: collapse; margin-bottom: 1rem; }
-  table th, table td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; text-align: center; }
-  .msg-ok { color: green; }
-  .msg-error { color: red; }
-  .note { color: #7f5a00; }
-`;
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 interface AgencyRow {
   id: number;
@@ -65,13 +56,17 @@ function AgencyLayout(props: { title: string; agencyName: string; children: Chil
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{props.title}</title>
-        <style>{PAGE_STYLE}</style>
+        <link rel="stylesheet" href="/style.css" />
       </head>
-      <body>
-        <header>
-          <strong>{props.agencyName}様専用 予約ページ</strong>
-        </header>
-        <main>{props.children}</main>
+      <body class="agency">
+        <div class="agency-hero">
+          <div class="inner">
+            <span class="eyebrow">Sup! Sup! — Lake SUP Tours</span>
+            <div class="for">{props.agencyName}様専用 予約ページ</div>
+            <h1>空き確認とご予約</h1>
+          </div>
+        </div>
+        <main class="agency-page">{props.children}</main>
       </body>
     </html>
   );
@@ -166,125 +161,198 @@ agency.get('/:token', async (c) => {
 
   return c.html(
     <AgencyLayout title={`${a.name}様専用 予約ページ`} agencyName={a.name}>
+      <p class="agency-note">
+        ご不明な点はお電話でも承ります。このページはブックマークしてご利用ください。
+      </p>
       {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
 
-      <h2>空き状況（{formatMD(from)} 〜 {formatMD(to)}）</h2>
-      <p>
-        <a href={`/a/${token}?from=${prevFrom}`}>&laquo; 前の14日</a>{' '}
-        <a href={`/a/${token}?from=${nextFrom}`}>次の14日 &raquo;</a>
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>プラン</th>
-            <th>時刻</th>
-            {dates.map((d) => (
-              <th>{formatMD(d)}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {plans.map((p) =>
-            slotTypes.map((st) => (
-              <tr>
-                <td>{p.name}</td>
-                <td>{st.name}</td>
-                {dates.map((d) => {
-                  const av = byPlanSlotDate.get(`${p.id}|${st.id}|${d}`);
-                  if (!av) return <td></td>;
-                  let symbol: string;
-                  if (av.status === 'open') symbol = String(av.remaining);
-                  else if (av.status === 'manual_closed') symbol = '休';
-                  else symbol = '×';
-                  return <td>{symbol}</td>;
-                })}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-
-      <h2>予約</h2>
-      {a.booking_mode === 'request' && (
-        <p class="note">※ご予約はリクエストとして送信され、承認後に確定します</p>
-      )}
-      <form method="post" action={`/a/${token}/bookings`}>
-        <label>
-          プラン:{' '}
-          <select name="plan_id">
-            {plans.map((p) => (
-              <option value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          時間帯:{' '}
-          <select name="slot_type_id">
-            {slotTypes.map((st) => (
-              <option value={st.id}>{st.name}（{st.start_time}）</option>
-            ))}
-          </select>
-        </label>{' '}
-        <label>
-          日付: <input type="date" name="date" min={today} max={maxDate} />
-        </label>{' '}
-        <label>
-          大人人数: <input type="number" name="num_adults" min="0" value="1" />
-        </label>{' '}
-        <label>
-          小人人数: <input type="number" name="num_children" min="0" value="0" />
-        </label>{' '}
-        <label>
-          お客様名: <input type="text" name="customer_name" required />
-        </label>{' '}
-        <label>
-          電話: <input type="text" name="customer_phone" />
-        </label>{' '}
-        <label>
-          備考: <textarea name="notes"></textarea>
-        </label>{' '}
-        <button type="submit">予約する</button>
-      </form>
-
-      <h2>自店の予約</h2>
-      {ownBookings.length === 0 ? (
-        <p>予約はまだありません</p>
-      ) : (
-        <table>
+      <h2>
+        空き状況（{formatMD(from)} 〜 {formatMD(to)}）
+      </h2>
+      <div class="cal-nav">
+        <a class="btn" href={`/a/${token}?from=${prevFrom}`}>
+          &laquo; 前の14日
+        </a>
+        <a class="btn" href={`/a/${token}?from=${nextFrom}`}>
+          次の14日 &raquo;
+        </a>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl grid14">
           <thead>
             <tr>
-              <th>参加日</th>
-              <th>時刻</th>
-              <th>プラン</th>
-              <th>顧客名</th>
-              <th>人数</th>
-              <th>金額</th>
-              <th>状態</th>
-              <th></th>
+              <th>プラン / 出発時刻</th>
+              {dates.map((d) => {
+                const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
+                const dowClass = weekday === 0 ? ' sun' : weekday === 6 ? ' sat' : '';
+                return (
+                  <th class={`day${dowClass}`}>
+                    {formatMD(d)}
+                    <span class="dow">{WEEKDAY_LABELS[weekday]}</span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {ownBookings.map((b) => (
-              <tr>
-                <td>{b.date}</td>
-                <td>{b.slot_name}</td>
-                <td>{b.plan_name}</td>
-                <td>{b.customer_name}</td>
-                <td>大{b.num_adults}小{b.num_children}</td>
-                <td>{b.total_amount}</td>
-                <td>{BOOKING_STATUS_LABELS[b.status]}</td>
-                <td>
-                  {(b.status === 'requested' || b.status === 'confirmed') && (
-                    <form method="post" action={`/a/${token}/bookings/${b.id}/cancel`}>
-                      <button type="submit">キャンセル</button>
-                    </form>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {plans.map((p) =>
+              slotTypes.map((st) => (
+                <tr>
+                  <th class="plan-name">
+                    {p.name}
+                    <br />
+                    <span class="time">{st.start_time} 発</span>
+                  </th>
+                  {dates.map((d) => {
+                    const av = byPlanSlotDate.get(`${p.id}|${st.id}|${d}`);
+                    if (!av) return <td class="slot-cell"></td>;
+                    let cellClass: string;
+                    let symbol: string;
+                    if (av.status === 'open') {
+                      cellClass = av.remaining <= 2 ? 'last' : 'ok';
+                      symbol = `残${av.remaining}`;
+                    } else if (av.status === 'manual_closed') {
+                      cellClass = 'off';
+                      symbol = '休';
+                    } else {
+                      cellClass = 'ng';
+                      symbol = '×';
+                    }
+                    return <td class={`slot-cell ${cellClass}`}>{symbol}</td>;
+                  })}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+      </div>
+      <div class="cal-legend">
+        <span class="lg-open">
+          <i></i>残席数 = ご予約可能
+        </span>
+        <span class="lg-linked">
+          <i></i>残りわずか
+        </span>
+        <span class="lg-full">
+          <i></i>× = 満席
+        </span>
+        <span class="lg-manual">
+          <i></i>休 = 催行なし
+        </span>
+      </div>
+
+      <h2>ご予約フォーム</h2>
+      <form class="card card-pad" method="post" action={`/a/${token}/bookings`}>
+        <div class="form-grid">
+          <div class="field">
+            <label>プラン</label>
+            <select name="plan_id">
+              {plans.map((p) => (
+                <option value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>時間帯</label>
+            <select name="slot_type_id">
+              {slotTypes.map((st) => (
+                <option value={st.id}>
+                  {st.name}（{st.start_time}）
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="field">
+            <label>日付</label>
+            <input type="date" name="date" min={today} max={maxDate} />
+          </div>
+          <div class="field">
+            <label>大人</label>
+            <input type="number" name="num_adults" min="0" value="1" />
+          </div>
+          <div class="field">
+            <label>小人</label>
+            <input type="number" name="num_children" min="0" value="0" />
+          </div>
+          <div class="field">
+            <label>お客様のお名前</label>
+            <input type="text" name="customer_name" required />
+          </div>
+          <div class="field">
+            <label>電話</label>
+            <input type="text" name="customer_phone" />
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div class="field" style="flex:1">
+            <label>備考</label>
+            <textarea name="notes"></textarea>
+          </div>
+          <button class="btn btn-primary btn-lg" type="submit">
+            この内容で予約する
+          </button>
+        </div>
+        {a.booking_mode === 'request' && (
+          <p class="agency-note" style="margin:14px 0 0">
+            このご予約はリクエスト制です。<strong>承認後に確定</strong>し、確定メールをお送りします。
+          </p>
+        )}
+      </form>
+
+      <h2>貴店のご予約一覧</h2>
+      {ownBookings.length === 0 ? (
+        <p>予約はまだありません</p>
+      ) : (
+        <div class="tbl-wrap tbl-cards">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>参加日</th>
+                <th>プラン / 時刻</th>
+                <th>お客様</th>
+                <th>人数</th>
+                <th class="r">金額</th>
+                <th>状態</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {ownBookings.map((b) => {
+                const muted = b.status === 'cancelled' || b.status === 'denied';
+                return (
+                  <tr class={muted ? 'row-muted' : undefined}>
+                    <td data-label="参加日" class="num">
+                      {b.date}
+                    </td>
+                    <td data-label="プラン">
+                      {b.plan_name} {b.slot_name}
+                    </td>
+                    <td data-label="お客様">{b.customer_name}</td>
+                    <td data-label="人数">
+                      大{b.num_adults} 小{b.num_children}
+                    </td>
+                    <td data-label="金額" class="num r">
+                      {b.total_amount}
+                    </td>
+                    <td data-label="状態">
+                      <span class={`badge ${BOOKING_BADGE_CLASSES[b.status]}`}>{BOOKING_STATUS_LABELS[b.status]}</span>
+                    </td>
+                    <td data-label="" class="actions">
+                      {(b.status === 'requested' || b.status === 'confirmed') && (
+                        <form method="post" action={`/a/${token}/bookings/${b.id}/cancel`}>
+                          <button class="btn btn-sm btn-danger" type="submit">
+                            キャンセル
+                          </button>
+                        </form>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </AgencyLayout>
   );
