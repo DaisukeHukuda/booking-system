@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <style>
+    body { margin: 0; background: #f0eee9; font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, system-ui, sans-serif; }
+    a { color: #0050b0; } a:hover { color: #0a63cf; }
+  </style>
+</helmet>
+<section style="padding:36px 40px 56px">
+  <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px">
+    <span style="font:700 20px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;color:#131619">Sup! Sup!</span>
+    <span style="font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.2em;color:#0050b0">RESERVATION SYSTEM — UI</span>
+  </div>
+  <p style="margin:0 0 28px;font-size:13px;color:#3b424b;max-width:760px;line-height:1.8">実装用の素のCSS 1ファイル（<a href="supsup/style.css">supsup/style.css</a>）＋サンプルHTML一式。山本屋DSの骨格（紺の帯・フラット塗り・直角・1px罫・モノスペース数字）を業務ツール向けに適用。外部フォント/CDNなし、システムフォントのみ。各フレームは実ファイルの実寸プレビュー。</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">01 予約台帳カレンダー（PC） — <a href="supsup/admin-calendar.html">開く</a></div>
+      <iframe src="supsup/admin-calendar.html" style="width:1240px;height:960px;border:1px solid #131619;background:#fff" title="台帳PC"></iframe>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">01m 予約台帳（スマホ 390px）</div>
+      <iframe src="supsup/admin-calendar.html" style="width:390px;height:960px;border:1px solid #131619;background:#fff" title="台帳SP"></iframe>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:40px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">02 日別詳細（PC） — <a href="supsup/admin-day.html">開く</a></div>
+      <iframe src="supsup/admin-day.html" style="width:1240px;height:1150px;border:1px solid #131619;background:#fff" title="日別PC"></iframe>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">02m 日別詳細（スマホ 390px）</div>
+      <iframe src="supsup/admin-day.html" style="width:390px;height:1150px;border:1px solid #131619;background:#fff" title="日別SP"></iframe>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:40px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">03 代理店ページ（柔らかめトーン） — <a href="supsup/agency.html">開く</a></div>
+      <iframe src="supsup/agency.html" style="width:1080px;height:1200px;border:1px solid #131619;background:#fff" title="代理店"></iframe>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">04 ログイン — <a href="supsup/login.html">開く</a></div>
+      <iframe src="supsup/login.html" style="width:640px;height:560px;border:1px solid #131619;background:#fff" title="ログイン"></iframe>
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619;margin-top:16px">05 承認待ち — <a href="supsup/admin-pending.html">開く</a></div>
+      <iframe src="supsup/admin-pending.html" style="width:1100px;height:420px;border:1px solid #131619;background:#fff" title="承認待ち"></iframe>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:40px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">06 プラン管理 — <a href="supsup/admin-plans.html">開く</a></div>
+      <iframe src="supsup/admin-plans.html" style="width:1240px;height:1120px;border:1px solid #131619;background:#fff" title="プラン"></iframe>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">07 集計 — <a href="supsup/admin-stats.html">開く</a></div>
+      <iframe src="supsup/admin-stats.html" style="width:820px;height:1000px;border:1px solid #131619;background:#fff" title="集計"></iframe>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:40px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">08 代理店管理 — <a href="supsup/admin-agencies.html">開く</a></div>
+      <iframe src="supsup/admin-agencies.html" style="width:1240px;height:620px;border:1px solid #131619;background:#fff" title="代理店管理"></iframe>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font:700 12px/1 ui-monospace,monospace;color:#131619">09 設定 — <a href="supsup/admin-settings.html">開く</a></div>
+      <iframe src="supsup/admin-settings.html" style="width:820px;height:1180px;border:1px solid #131619;background:#fff" title="設定"></iframe>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

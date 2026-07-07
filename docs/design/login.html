@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ログイン | Sup! Sup! 予約管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="login-wrap">
+  <form class="login-card" method="post" action="/login">
+    <div class="brand-lg">Sup! Sup!<small>RESERVATION LEDGER</small></div>
+    <div class="field" style="margin:24px 0 16px">
+      <label for="pw">パスワード</label>
+      <input type="password" id="pw" name="password" autocomplete="current-password" autofocus>
+    </div>
+    <button class="btn btn-primary btn-lg btn-block" type="submit">ログイン</button>
+    <p class="muted small" style="margin:16px 0 0">オーナー専用の管理画面です。</p>
+  </form>
+</main>
+</body>
+</html>

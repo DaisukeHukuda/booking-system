@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>設定 | Sup! Sup! 予約管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="admin-calendar.html">Sup! Sup!<small>RESERVATION LEDGER</small></a>
+  <nav class="nav">
+    <a href="admin-calendar.html">予約台帳</a>
+    <a href="admin-pending.html">承認待ち</a>
+    <a href="admin-plans.html">プラン</a>
+    <a href="admin-agencies.html">代理店</a>
+    <a href="admin-stats.html">集計</a>
+    <a href="admin-settings.html" class="is-active">設定</a>
+  </nav>
+  <div class="header-actions"><form method="post" action="/logout"><button class="btn btn-sm btn-onnavy" type="submit">ログアウト</button></form></div>
+</div></header>
+<main class="page page-narrow">
+  <div class="page-head">
+    <span class="eyebrow">Settings</span>
+    <h1>設定</h1>
+  </div>
+
+  <h2>リソース</h2>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>名前</th><th>有効</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>SUPボード（10艇）</td><td><span class="badge st-open">有効</span></td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+        <tr><td>ガイドA</td><td><span class="badge st-open">有効</span></td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+        <tr><td>ガイドB</td><td><span class="badge st-open">有効</span></td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+        <tr class="row-muted"><td>送迎バン</td><td><span class="badge st-manual">無効</span></td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <form class="card card-pad form-row" method="post" action="/admin/settings/resources">
+    <div class="field"><label>名前</label><input type="text" name="name" placeholder="新しいリソース"></div>
+    <button class="btn btn-primary" type="submit">追加</button>
+  </form>
+
+  <h2>時間帯</h2>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>名前</th><th>開始時刻</th><th class="r">表示順</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>午前</td><td class="num">9:30</td><td class="num r">1</td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+        <tr><td>午後</td><td class="num">13:30</td><td class="num r">2</td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+        <tr><td>夕方</td><td class="num">16:30</td><td class="num r">3</td><td class="actions"><a class="btn btn-sm" href="#">編集</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <form class="card card-pad form-row" method="post" action="/admin/settings/slots">
+    <div class="field"><label>名前</label><input type="text" name="name" placeholder="早朝"></div>
+    <div class="field"><label>開始時刻</label><input type="time" name="start" value="09:00"></div>
+    <div class="field"><label>表示順</label><input type="number" name="order" value="0" class="w-sm"></div>
+    <button class="btn btn-primary" type="submit">追加</button>
+  </form>
+
+  <h2>手動クローズ</h2>
+  <form class="card card-pad form-row" method="post" action="/admin/settings/close">
+    <div class="field"><label>日付</label><input type="date" name="date"></div>
+    <div class="field"><label>時間帯</label>
+      <select name="slot"><option>終日</option><option>午前 9:30</option><option>午後 13:30</option><option>夕方 16:30</option></select>
+    </div>
+    <div class="field"><label>プラン</label>
+      <select name="plan"><option>全プラン</option><option>SUP体験（2時間）</option><option>SUPロングツアー（半日）</option><option>サンセットSUP</option></select>
+    </div>
+    <div class="field"><label>理由</label><input type="text" name="reason" placeholder="強風予報 など"></div>
+    <button class="btn btn-primary" type="submit">登録</button>
+  </form>
+  <div class="tbl-wrap" style="margin-top:12px">
+    <table class="tbl">
+      <thead><tr><th>日付</th><th>時間帯</th><th>プラン</th><th>理由</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="num">7/14（火）</td><td>終日</td><td>全プラン</td><td>定休日</td><td class="actions"><form method="post" action="/admin/settings/close/delete"><button class="btn btn-sm btn-danger" type="submit">解除</button></form></td></tr>
+        <tr><td class="num">7/15（水）</td><td>終日</td><td>全プラン</td><td>定休日</td><td class="actions"><form method="post" action="/admin/settings/close/delete"><button class="btn btn-sm btn-danger" type="submit">解除</button></form></td></tr>
+        <tr><td class="num">7/12（日）</td><td>午前 9:30</td><td>サンセットSUP</td><td>スタッフ都合</td><td class="actions"><form method="post" action="/admin/settings/close/delete"><button class="btn btn-sm btn-danger" type="submit">解除</button></form></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

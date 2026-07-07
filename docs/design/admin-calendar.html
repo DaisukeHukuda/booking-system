@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>予約台帳 2026年7月 | Sup! Sup! 予約管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="admin-calendar.html">Sup! Sup!<small>RESERVATION LEDGER</small></a>
+  <nav class="nav">
+    <a href="admin-calendar.html" class="is-active">予約台帳</a>
+    <a href="admin-pending.html">承認待ち</a>
+    <a href="admin-plans.html">プラン</a>
+    <a href="admin-agencies.html">代理店</a>
+    <a href="admin-stats.html">集計</a>
+    <a href="admin-settings.html">設定</a>
+  </nav>
+  <div class="header-actions"><form method="post" action="/logout"><button class="btn btn-sm btn-onnavy" type="submit">ログアウト</button></form></div>
+</div></header>
+<main class="page">
+  <div class="banner-warn"><strong>メール送信エラー</strong>7/6 の予約確認メール 1件が送信できませんでした。<a href="#">詳細を確認</a><button class="btn btn-sm" type="button">再送信</button></div>
+  <div class="page-head">
+    <span class="eyebrow">Ledger / 2026-07</span>
+    <h1>2026年7月 予約台帳</h1>
+    <span class="sub">タップで日別詳細へ</span>
+  </div>
+  <div class="cal-nav">
+    <a class="btn" href="#">« 前月</a>
+    <a class="btn" href="#">次月 »</a>
+    <span class="spacer"></span>
+    <a class="btn btn-primary" href="admin-day.html">今日の予約へ</a>
+  </div>
+  <div class="cal">
+    <div class="cal-dow sun">日</div><div class="cal-dow">月</div><div class="cal-dow">火</div><div class="cal-dow">水</div><div class="cal-dow">木</div><div class="cal-dow">金</div><div class="cal-dow sat">土</div>
+  <div class="cal-cell is-empty"></div>
+  <div class="cal-cell is-empty"></div>
+  <div class="cal-cell is-empty"></div>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">1<span class="dow-inline">(水)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">7名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">3名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">2<span class="dow-inline">(木)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">4名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">6名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">3<span class="dow-inline">(金)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">1名</span></div>
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">13:30</span><span class="n">9名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sat">4<span class="dow-inline">(土)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-linked"><i class="dot"></i><span class="t">13:30</span><span class="n">–</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sun">5<span class="dow-inline">(日)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">6<span class="dow-inline">(月)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">2名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">8名</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">16:30</span><span class="n">–</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">7<span class="dow-inline">(火)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">9名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">1名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell is-today" href="admin-day.html">
+    <div class="cal-daynum">8<span class="dow-inline">(水)</span><span class="today-label">TODAY</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">6名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">4名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">9<span class="dow-inline">(木)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">3名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">7名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">10<span class="dow-inline">(金)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">0名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">0名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sat">11<span class="dow-inline">(土)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">10名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sun">12<span class="dow-inline">(日)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">10名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">13<span class="dow-inline">(月)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">1名</span></div>
+    <div class="cal-slot s-linked"><i class="dot"></i><span class="t">13:30</span><span class="n">–</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">14<span class="dow-inline">(火)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">9:30</span><span class="n">-</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">13:30</span><span class="n">-</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">16:30</span><span class="n">-</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">15<span class="dow-inline">(水)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">9:30</span><span class="n">-</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">13:30</span><span class="n">-</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">16:30</span><span class="n">-</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">16<span class="dow-inline">(木)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">2名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">8名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">17<span class="dow-inline">(金)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">9名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">1名</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">16:30</span><span class="n">–</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sat">18<span class="dow-inline">(土)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">11名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sun">19<span class="dow-inline">(日)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">11名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">20<span class="dow-inline">(月)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">0名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">0名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">21<span class="dow-inline">(火)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">7名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">3名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">22<span class="dow-inline">(水)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">4名</span></div>
+    <div class="cal-slot s-linked"><i class="dot"></i><span class="t">13:30</span><span class="n">–</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">23<span class="dow-inline">(木)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">1名</span></div>
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">13:30</span><span class="n">9名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">24<span class="dow-inline">(金)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">8名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">2名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sat">25<span class="dow-inline">(土)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum sun">26<span class="dow-inline">(日)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">13:30</span><span class="n">12名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">27<span class="dow-inline">(月)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-full"><i class="dot"></i><span class="t">9:30</span><span class="n">9名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">1名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">28<span class="dow-inline">(火)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">6名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">4名</span></div>
+    <div class="cal-slot s-manual"><i class="dot"></i><span class="t">16:30</span><span class="n">–</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">29<span class="dow-inline">(水)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">3名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">7名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">30<span class="dow-inline">(木)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">0名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">13:30</span><span class="n">0名</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">0名</span></div>
+    </div>
+  </a>
+  <a class="cal-cell" href="admin-day.html">
+    <div class="cal-daynum">31<span class="dow-inline">(金)</span></div>
+    <div class="cal-slots">
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">9:30</span><span class="n">7名</span></div>
+    <div class="cal-slot s-linked"><i class="dot"></i><span class="t">13:30</span><span class="n">–</span></div>
+    <div class="cal-slot s-open"><i class="dot"></i><span class="t">16:30</span><span class="n">5名</span></div>
+    </div>
+  </a>
+  <div class="cal-cell is-empty"></div>
+  </div>
+  <div class="cal-legend">
+    <span class="lg-open"><i></i>空きあり</span>
+    <span class="lg-full"><i></i>満席</span>
+    <span class="lg-linked"><i></i>連動クローズ</span>
+    <span class="lg-manual"><i></i>手動クローズ</span>
+  </div>
+</main>
+</body>
+</html>

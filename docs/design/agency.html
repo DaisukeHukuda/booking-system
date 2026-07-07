@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>湖畔ホテル様専用 予約ページ | Sup! Sup!</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="agency">
+<div class="agency-hero"><div class="inner">
+  <span class="eyebrow">Sup! Sup! — Lake SUP Tours</span>
+  <div class="for">湖畔ホテル様専用 予約ページ</div>
+  <h1>空き確認とご予約</h1>
+</div></div>
+<main class="agency-page">
+  <p class="agency-note">ご不明な点はお電話（0288-00-0000 / 8:00–18:00）でも承ります。このページはブックマークしてご利用ください。</p>
+
+  <h2>空き状況（7/8 – 7/21）</h2>
+  <div class="cal-nav">
+    <a class="btn" href="#">« 前の14日</a>
+    <a class="btn" href="#">次の14日 »</a>
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl grid14">
+      <thead><tr><th>プラン / 出発時刻</th><th class="day">7/8<span class="dow">水</span></th><th class="day">7/9<span class="dow">木</span></th><th class="day">7/10<span class="dow">金</span></th><th class="day sat">7/11<span class="dow">土</span></th><th class="day sun">7/12<span class="dow">日</span></th><th class="day">7/13<span class="dow">月</span></th><th class="day">7/14<span class="dow">火</span></th><th class="day">7/15<span class="dow">水</span></th><th class="day">7/16<span class="dow">木</span></th><th class="day">7/17<span class="dow">金</span></th><th class="day sat">7/18<span class="dow">土</span></th><th class="day sun">7/19<span class="dow">日</span></th><th class="day">7/20<span class="dow">月</span></th><th class="day">7/21<span class="dow">火</span></th></tr></thead>
+      <tbody>
+        <tr><th class="plan-name">SUP体験（2時間）<br><span class="time">9:30 発</span></th><td class="slot-cell ok">残9</td><td class="slot-cell ng">×</td><td class="slot-cell last">残2</td><td class="slot-cell ok">残4</td><td class="slot-cell ok">残6</td><td class="slot-cell ok">残8</td><td class="slot-cell off">休</td><td class="slot-cell off">休</td><td class="slot-cell ok">残3</td><td class="slot-cell ok">残5</td><td class="slot-cell ok">残7</td><td class="slot-cell ok">残9</td><td class="slot-cell ng">×</td><td class="slot-cell last">残2</td></tr>
+        <tr><th class="plan-name">SUP体験（2時間）<br><span class="time">13:30 発</span></th><td class="slot-cell last">残1</td><td class="slot-cell ok">残6</td><td class="slot-cell ng">×</td><td class="slot-cell ok">残5</td><td class="slot-cell ok">残9</td><td class="slot-cell ok">残4</td><td class="slot-cell off">休</td><td class="slot-cell off">休</td><td class="slot-cell ok">残8</td><td class="slot-cell last">残2</td><td class="slot-cell ok">残7</td><td class="slot-cell last">残1</td><td class="slot-cell ok">残6</td><td class="slot-cell ng">×</td></tr>
+        <tr><th class="plan-name">SUPロングツアー（半日）<br><span class="time">9:30 発</span></th><td class="slot-cell ok">残6</td><td class="slot-cell ok">残9</td><td class="slot-cell last">残1</td><td class="slot-cell ok">残4</td><td class="slot-cell ok">残7</td><td class="slot-cell ok">残9</td><td class="slot-cell off">休</td><td class="slot-cell off">休</td><td class="slot-cell ok">残8</td><td class="slot-cell ng">×</td><td class="slot-cell ok">残3</td><td class="slot-cell ok">残6</td><td class="slot-cell ok">残9</td><td class="slot-cell last">残1</td></tr>
+        <tr><th class="plan-name">サンセットSUP<br><span class="time">16:30 発</span></th><td class="slot-cell ok">残6</td><td class="slot-cell last">残2</td><td class="slot-cell ok">残9</td><td class="slot-cell ok">残5</td><td class="slot-cell last">残1</td><td class="slot-cell ok">残8</td><td class="slot-cell off">休</td><td class="slot-cell off">休</td><td class="slot-cell ok">残7</td><td class="slot-cell ok">残3</td><td class="slot-cell ok">残9</td><td class="slot-cell ok">残6</td><td class="slot-cell last">残2</td><td class="slot-cell ok">残9</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cal-legend">
+    <span class="lg-open"><i></i>残席数 = ご予約可能</span>
+    <span class="lg-linked"><i></i>残りわずか</span>
+    <span class="lg-full"><i></i>× = 満席</span>
+    <span class="lg-manual"><i></i>休 = 催行なし</span>
+  </div>
+
+  <h2>ご予約フォーム</h2>
+  <form class="card card-pad" method="post" action="/agency/book">
+    <div class="form-grid">
+      <div class="field"><label>プラン</label>
+        <select name="plan"><option>SUP体験（2時間）</option><option>SUPロングツアー（半日）</option><option>サンセットSUP</option></select>
+      </div>
+      <div class="field"><label>出発時刻</label>
+        <select name="slot"><option>9:30</option><option>13:30</option><option>16:30</option></select>
+      </div>
+      <div class="field"><label>日付</label><input type="date" name="date" value="2026-07-10"></div>
+      <div class="field"><label>大人</label><input type="number" name="adults" value="2" min="0"></div>
+      <div class="field"><label>小人</label><input type="number" name="children" value="0" min="0"></div>
+      <div class="field"><label>お客様のお名前</label><input type="text" name="name" placeholder="ご宿泊のお客様名"></div>
+      <div class="field"><label>お電話番号</label><input type="tel" name="tel" placeholder="090-0000-0000"></div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="field" style="flex:1"><label>備考</label><input type="text" name="note" placeholder="送迎の希望、お子様の年齢 など"></div>
+      <button class="btn btn-primary btn-lg" type="submit">この内容で予約する</button>
+    </div>
+    <p class="agency-note" style="margin:14px 0 0">このご予約はリクエスト制です。<strong>Sup! Sup! の承認後に確定</strong>し、確定メールをお送りします。</p>
+  </form>
+
+  <h2>貴店のご予約一覧</h2>
+  <div class="tbl-wrap tbl-cards">
+    <table class="tbl">
+      <thead><tr><th>日付</th><th>プラン / 時刻</th><th>お客様</th><th>人数</th><th>状態</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td data-label="日付" class="num">7/10（金）</td>
+          <td data-label="プラン">SUP体験（2時間） 9:30</td>
+          <td data-label="お客様">鈴木 様</td>
+          <td data-label="人数">大2 小1</td>
+          <td data-label="状態"><span class="badge bk-confirmed">確定</span></td>
+          <td data-label="" class="actions"><form method="post" action="/agency/cancel"><button class="btn btn-sm btn-danger" type="submit">キャンセル</button></form></td>
+        </tr>
+        <tr>
+          <td data-label="日付" class="num">7/12（日）</td>
+          <td data-label="プラン">SUPロングツアー（半日） 9:30</td>
+          <td data-label="お客様">田村 様</td>
+          <td data-label="人数">大4</td>
+          <td data-label="状態"><span class="badge bk-request">承認待ち</span></td>
+          <td data-label="" class="actions"><form method="post" action="/agency/cancel"><button class="btn btn-sm btn-danger" type="submit">キャンセル</button></form></td>
+        </tr>
+        <tr class="row-muted">
+          <td data-label="日付" class="num">7/5（日）</td>
+          <td data-label="プラン">サンセットSUP 16:30</td>
+          <td data-label="お客様">高橋 様</td>
+          <td data-label="人数">大3</td>
+          <td data-label="状態"><span class="badge bk-cancelled">取消</span></td>
+          <td data-label="" class="actions"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

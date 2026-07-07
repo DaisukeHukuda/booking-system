@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>代理店管理 | Sup! Sup! 予約管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="admin-calendar.html">Sup! Sup!<small>RESERVATION LEDGER</small></a>
+  <nav class="nav">
+    <a href="admin-calendar.html">予約台帳</a>
+    <a href="admin-pending.html">承認待ち</a>
+    <a href="admin-plans.html">プラン</a>
+    <a href="admin-agencies.html" class="is-active">代理店</a>
+    <a href="admin-stats.html">集計</a>
+    <a href="admin-settings.html">設定</a>
+  </nav>
+  <div class="header-actions"><form method="post" action="/logout"><button class="btn btn-sm btn-onnavy" type="submit">ログアウト</button></form></div>
+</div></header>
+<main class="page">
+  <div class="page-head">
+    <span class="eyebrow">Agencies</span>
+    <h1>代理店管理</h1>
+  </div>
+  <p class="msg-ok">「湖畔ホテル」の専用リンクを再発行しました。旧リンクは無効です。</p>
+  <div class="tbl-wrap tbl-cards">
+    <table class="tbl">
+      <thead><tr><th>名前</th><th>予約モード</th><th>メール</th><th>有効</th><th>専用リンク</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td data-label="名前">湖畔ホテル</td>
+          <td data-label="モード"><span class="badge bk-request">リクエスト（承認制）</span></td>
+          <td data-label="メール">front@kohan-hotel.example.jp</td>
+          <td data-label="有効"><span class="badge st-open">有効</span></td>
+          <td data-label="リンク"><span class="copy-link"><input type="text" readonly value="https://yoyaku.supsup.jp/a/k9fz2m…"><button class="btn btn-sm" type="button">コピー</button></span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#">編集</a> <form method="post" action="/admin/agencies/relink"><button class="btn btn-sm" type="submit">リンク再発行</button></form></td>
+        </tr>
+        <tr>
+          <td data-label="名前">民宿さくら</td>
+          <td data-label="モード"><span class="badge bk-confirmed">即時確定</span></td>
+          <td data-label="メール">sakura@example.jp</td>
+          <td data-label="有効"><span class="badge st-open">有効</span></td>
+          <td data-label="リンク"><span class="copy-link"><input type="text" readonly value="https://yoyaku.supsup.jp/a/w3qpt8…"><button class="btn btn-sm" type="button">コピー</button></span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#">編集</a> <form method="post" action="/admin/agencies/relink"><button class="btn btn-sm" type="submit">リンク再発行</button></form></td>
+        </tr>
+        <tr class="row-muted">
+          <td data-label="名前">○○トラベル（取引終了）</td>
+          <td data-label="モード"><span class="badge bk-request">リクエスト（承認制）</span></td>
+          <td data-label="メール">info@marumaru-travel.example.jp</td>
+          <td data-label="有効"><span class="badge st-manual">無効</span></td>
+          <td data-label="リンク"><span class="muted small">停止中</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#">編集</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>新規作成</h2>
+  <form class="card card-pad" method="post" action="/admin/agencies/new">
+    <div class="form-grid">
+      <div class="field"><label>名前</label><input type="text" name="name" placeholder="○○ホテル"></div>
+      <div class="field"><label>メール</label><input type="email" name="email" placeholder="front@example.jp"></div>
+      <div class="field"><label>予約モード</label>
+        <select name="mode"><option>リクエスト（承認制）</option><option>即時確定</option></select>
+      </div>
+      <button class="btn btn-primary" type="submit">作成して専用リンクを発行</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

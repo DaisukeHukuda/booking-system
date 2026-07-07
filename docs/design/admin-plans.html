@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プラン管理 | Sup! Sup! 予約管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="admin-calendar.html">Sup! Sup!<small>RESERVATION LEDGER</small></a>
+  <nav class="nav">
+    <a href="admin-calendar.html">予約台帳</a>
+    <a href="admin-pending.html">承認待ち</a>
+    <a href="admin-plans.html" class="is-active">プラン</a>
+    <a href="admin-agencies.html">代理店</a>
+    <a href="admin-stats.html">集計</a>
+    <a href="admin-settings.html">設定</a>
+  </nav>
+  <div class="header-actions"><form method="post" action="/logout"><button class="btn btn-sm btn-onnavy" type="submit">ログアウト</button></form></div>
+</div></header>
+<main class="page">
+  <div class="page-head">
+    <span class="eyebrow">Plans</span>
+    <h1>プラン管理</h1>
+  </div>
+  <div class="tbl-wrap tbl-cards">
+    <table class="tbl">
+      <thead><tr><th>名前</th><th class="r">大人</th><th class="r">小人</th><th class="r">所要</th><th>リソース</th><th>時間帯別定員</th><th>有効</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td data-label="名前">SUP体験（2時間）</td>
+          <td data-label="大人" class="num r">¥6,500</td>
+          <td data-label="小人" class="num r">¥3,500</td>
+          <td data-label="所要" class="num r">120分</td>
+          <td data-label="リソース">SUPボード / ガイドA</td>
+          <td data-label="定員" class="num">9:30=10 / 13:30=10</td>
+          <td data-label="有効"><span class="badge st-open">有効</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#plan-edit">編集</a></td>
+        </tr>
+        <tr>
+          <td data-label="名前">SUPロングツアー（半日）</td>
+          <td data-label="大人" class="num r">¥9,800</td>
+          <td data-label="小人" class="num r">—</td>
+          <td data-label="所要" class="num r">240分</td>
+          <td data-label="リソース">SUPボード / ガイドA / ガイドB</td>
+          <td data-label="定員" class="num">9:30=6</td>
+          <td data-label="有効"><span class="badge st-open">有効</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#plan-edit">編集</a></td>
+        </tr>
+        <tr>
+          <td data-label="名前">サンセットSUP</td>
+          <td data-label="大人" class="num r">¥7,500</td>
+          <td data-label="小人" class="num r">¥4,000</td>
+          <td data-label="所要" class="num r">90分</td>
+          <td data-label="リソース">SUPボード / ガイドB</td>
+          <td data-label="定員" class="num">16:30=8</td>
+          <td data-label="有効"><span class="badge st-open">有効</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#plan-edit">編集</a></td>
+        </tr>
+        <tr class="row-muted">
+          <td data-label="名前">ナイトSUP（休止中）</td>
+          <td data-label="大人" class="num r">¥8,800</td>
+          <td data-label="小人" class="num r">—</td>
+          <td data-label="所要" class="num r">90分</td>
+          <td data-label="リソース">SUPボード / ガイドB</td>
+          <td data-label="定員" class="num">—</td>
+          <td data-label="有効"><span class="badge st-manual">無効</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#plan-edit">編集</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="plan-edit">編集 — SUP体験（2時間）</h2>
+  <form class="card card-pad" method="post" action="/admin/plans/1">
+    <div class="form-grid">
+      <div class="field"><label>名前</label><input type="text" name="name" value="SUP体験（2時間）"></div>
+      <div class="field"><label>大人料金（円）</label><input type="number" name="adult" value="6500"></div>
+      <div class="field"><label>小人料金（円）</label><input type="number" name="child" value="3500"></div>
+      <div class="field"><label>所要時間（分）</label><input type="number" name="duration" value="120"></div>
+    </div>
+    <h3>使用リソース</h3>
+    <div class="form-row">
+      <label class="check"><input type="checkbox" checked> SUPボード（10艇）</label>
+      <label class="check"><input type="checkbox" checked> ガイドA</label>
+      <label class="check"><input type="checkbox"> ガイドB</label>
+      <label class="check"><input type="checkbox"> 送迎バン</label>
+    </div>
+    <h3>時間帯ごとの催行と定員</h3>
+    <div class="tbl-wrap" style="max-width:520px">
+      <table class="tbl">
+        <thead><tr><th>時間帯</th><th>催行</th><th>定員</th></tr></thead>
+        <tbody>
+          <tr><td>午前 9:30</td><td><label class="check"><input type="checkbox" checked> 催行する</label></td><td><input type="number" value="10" class="w-sm"></td></tr>
+          <tr><td>午後 13:30</td><td><label class="check"><input type="checkbox" checked> 催行する</label></td><td><input type="number" value="10" class="w-sm"></td></tr>
+          <tr><td>夕方 16:30</td><td><label class="check"><input type="checkbox"> 催行する</label></td><td><input type="number" value="" placeholder="—" class="w-sm" disabled></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <button class="btn btn-primary btn-lg" type="submit">保存</button>
+      <a class="btn btn-lg" href="admin-plans.html">キャンセル</a>
+    </div>
+  </form>
+
+  <h2>新規作成</h2>
+  <form class="card card-pad" method="post" action="/admin/plans/new">
+    <div class="form-grid">
+      <div class="field"><label>名前</label><input type="text" name="name"></div>
+      <div class="field"><label>大人料金（円）</label><input type="number" name="adult" value="0"></div>
+      <div class="field"><label>小人料金（円）</label><input type="number" name="child" value="0"></div>
+      <div class="field"><label>所要時間（分）</label><input type="number" name="duration" value="120"></div>
+      <button class="btn btn-primary" type="submit">作成</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

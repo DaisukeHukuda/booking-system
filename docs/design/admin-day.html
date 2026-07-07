@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7月12日（日）の詳細 | Sup! Sup! 予約管理</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="admin-calendar.html">Sup! Sup!<small>RESERVATION LEDGER</small></a>
+  <nav class="nav">
+    <a href="admin-calendar.html" class="is-active">予約台帳</a>
+    <a href="admin-pending.html">承認待ち</a>
+    <a href="admin-plans.html">プラン</a>
+    <a href="admin-agencies.html">代理店</a>
+    <a href="admin-stats.html">集計</a>
+    <a href="admin-settings.html">設定</a>
+  </nav>
+  <div class="header-actions"><form method="post" action="/logout"><button class="btn btn-sm btn-onnavy" type="submit">ログアウト</button></form></div>
+</div></header>
+<main class="page">
+  <div class="page-head">
+    <span class="eyebrow">Day / 2026-07-12</span>
+    <h1>2026年7月12日（日）</h1>
+    <span class="sub"><a href="admin-calendar.html">« 台帳へ戻る</a></span>
+  </div>
+  <div class="cal-nav">
+    <a class="btn" href="#">« 7/11（土）</a>
+    <a class="btn" href="#">7/13（月） »</a>
+  </div>
+
+  <h2>空き状況</h2>
+  <div class="tbl-wrap">
+    <table class="tbl avail">
+      <thead>
+        <tr>
+          <th>時間帯</th>
+          <th>SUP体験（2時間）</th>
+          <th>SUPロングツアー（半日）</th>
+          <th>サンセットSUP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th class="nowrap">午前 9:30</th>
+          <td><span class="cell c-open"><span class="state">空き</span><span class="zan">残4</span>
+            <form class="cap-form" method="post" action="/admin/day/capacity"><label class="small">定員</label><input type="number" name="cap" value="10"><button class="btn" type="submit">変更</button></form>
+          </span></td>
+          <td><span class="cell c-open"><span class="state">空き</span><span class="zan">残2</span>
+            <form class="cap-form" method="post" action="/admin/day/capacity"><label class="small">定員</label><input type="number" name="cap" value="6"><button class="btn" type="submit">変更</button></form>
+          </span></td>
+          <td><span class="cell c-manual"><span class="state">手動クローズ</span><span class="why">スタッフ都合</span></span></td>
+        </tr>
+        <tr>
+          <th class="nowrap">午後 13:30</th>
+          <td><span class="cell c-full"><span class="state">満席</span><span class="zan">10/10</span></span></td>
+          <td><span class="cell c-linked"><span class="state">連動クローズ</span><span class="why">原因: SUP体験（2時間）</span></span></td>
+          <td><span class="cell c-open"><span class="state">空き</span><span class="zan">残6</span>
+            <form class="cap-form" method="post" action="/admin/day/capacity"><label class="small">定員</label><input type="number" name="cap" value="8"><button class="btn" type="submit">変更</button></form>
+          </span></td>
+        </tr>
+        <tr>
+          <th class="nowrap">夕方 16:30</th>
+          <td><span class="cell c-open"><span class="state">空き</span><span class="zan">残8</span>
+            <form class="cap-form" method="post" action="/admin/day/capacity"><label class="small">定員</label><input type="number" name="cap" value="10"><button class="btn" type="submit">変更</button></form>
+          </span></td>
+          <td><span class="cell c-manual"><span class="state">手動クローズ</span><span class="why">夕方は催行なし</span></span></td>
+          <td><span class="cell c-full"><span class="state">満席</span><span class="zan">8/8</span></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>予約一覧 <span class="muted small">6件・18名</span></h2>
+  <div class="tbl-wrap tbl-cards">
+    <table class="tbl">
+      <thead>
+        <tr><th>時間帯</th><th>プラン</th><th>顧客</th><th>電話</th><th>人数</th><th class="r">金額</th><th>支払</th><th>経路</th><th>状態</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="時間帯" class="num">9:30</td>
+          <td data-label="プラン">SUP体験（2時間）</td>
+          <td data-label="顧客">佐藤 直樹</td>
+          <td data-label="電話" class="num">090-1234-5678</td>
+          <td data-label="人数">大2 小1</td>
+          <td data-label="金額" class="num r">¥16,500</td>
+          <td data-label="支払">現地現金</td>
+          <td data-label="経路">電話</td>
+          <td data-label="状態"><span class="badge bk-confirmed">確定</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#">変更</a> <form method="post" action="/admin/booking/cancel"><button class="btn btn-sm btn-danger" type="submit">キャンセル</button></form></td>
+        </tr>
+        <tr>
+          <td data-label="時間帯" class="num">9:30</td>
+          <td data-label="プラン">SUPロングツアー（半日）</td>
+          <td data-label="顧客">田村 みなみ</td>
+          <td data-label="電話" class="num">080-9876-5432</td>
+          <td data-label="人数">大4</td>
+          <td data-label="金額" class="num r">¥39,200</td>
+          <td data-label="支払">事前振込</td>
+          <td data-label="経路">湖畔ホテル</td>
+          <td data-label="状態"><span class="badge bk-request">リクエスト</span></td>
+          <td data-label="" class="actions"><form method="post" action="/admin/booking/approve"><button class="btn btn-sm btn-ok" type="submit">承認</button></form> <form method="post" action="/admin/booking/deny"><button class="btn btn-sm btn-danger" type="submit">否認</button></form></td>
+        </tr>
+        <tr>
+          <td data-label="時間帯" class="num">13:30</td>
+          <td data-label="プラン">SUP体験（2時間）</td>
+          <td data-label="顧客">Wilson, Emma</td>
+          <td data-label="電話" class="num">070-2222-8888</td>
+          <td data-label="人数">大2</td>
+          <td data-label="金額" class="num r">¥13,000</td>
+          <td data-label="支払">現地カード</td>
+          <td data-label="経路">Web</td>
+          <td data-label="状態"><span class="badge bk-confirmed">確定</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#">変更</a> <form method="post" action="/admin/booking/cancel"><button class="btn btn-sm btn-danger" type="submit">キャンセル</button></form></td>
+        </tr>
+        <tr>
+          <td data-label="時間帯" class="num">13:30</td>
+          <td data-label="プラン">SUP体験（2時間）</td>
+          <td data-label="顧客">小林 家族</td>
+          <td data-label="電話" class="num">090-5555-0011</td>
+          <td data-label="人数">大2 小2</td>
+          <td data-label="金額" class="num r">¥20,000</td>
+          <td data-label="支払">現地現金</td>
+          <td data-label="経路">民宿さくら</td>
+          <td data-label="状態"><span class="badge bk-confirmed">確定</span></td>
+          <td data-label="" class="actions"><a class="btn btn-sm" href="#">変更</a> <form method="post" action="/admin/booking/cancel"><button class="btn btn-sm btn-danger" type="submit">キャンセル</button></form></td>
+        </tr>
+        <tr class="row-muted">
+          <td data-label="時間帯" class="num">16:30</td>
+          <td data-label="プラン">サンセットSUP</td>
+          <td data-label="顧客">中西 陽菜</td>
+          <td data-label="電話" class="num">080-1111-3333</td>
+          <td data-label="人数">大1</td>
+          <td data-label="金額" class="num r">¥7,500</td>
+          <td data-label="支払">—</td>
+          <td data-label="経路">Web</td>
+          <td data-label="状態"><span class="badge bk-cancelled">取消</span></td>
+          <td data-label="" class="actions"></td>
+        </tr>
+        <tr class="row-muted">
+          <td data-label="時間帯" class="num">16:30</td>
+          <td data-label="プラン">サンセットSUP</td>
+          <td data-label="顧客">高橋 亘</td>
+          <td data-label="電話" class="num">090-7777-2323</td>
+          <td data-label="人数">大3</td>
+          <td data-label="金額" class="num r">¥22,500</td>
+          <td data-label="支払">—</td>
+          <td data-label="経路">湖畔ホテル</td>
+          <td data-label="状態"><span class="badge bk-denied">否認</span></td>
+          <td data-label="" class="actions"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>新規予約（電話受付）</h2>
+  <form class="card card-pad" method="post" action="/admin/booking/new">
+    <div class="form-grid">
+      <div class="field"><label>プラン</label>
+        <select name="plan"><option>SUP体験（2時間）</option><option>SUPロングツアー（半日）</option><option>サンセットSUP</option></select>
+      </div>
+      <div class="field"><label>時間帯</label>
+        <select name="slot"><option>午前 9:30</option><option>午後 13:30</option><option>夕方 16:30</option></select>
+      </div>
+      <div class="field"><label>大人</label><input type="number" name="adults" value="2" min="0"></div>
+      <div class="field"><label>小人</label><input type="number" name="children" value="0" min="0"></div>
+      <div class="field"><label>顧客名</label><input type="text" name="name" placeholder="山田 太郎"></div>
+      <div class="field"><label>電話</label><input type="tel" name="tel" placeholder="090-0000-0000"></div>
+      <div class="field"><label>金額 <span class="hint">空欄で自動計算</span></label><input type="number" name="amount" placeholder="自動"></div>
+      <div class="field"><label>支払方法</label>
+        <select name="payment"><option>現地現金</option><option>現地カード</option><option>事前振込</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="field" style="flex:1"><label>備考</label><input type="text" name="note" placeholder="初心者3名・ウェット貸出あり など"></div>
+      <button class="btn btn-primary btn-lg" type="submit">この日に予約を追加</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>
