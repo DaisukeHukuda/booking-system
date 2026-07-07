@@ -4,6 +4,7 @@ import { passwordMatches, signSession, verifySession } from '../auth/session';
 import type { Bindings } from '../types';
 import { agencies } from './admin/agencies';
 import { calendar } from './admin/calendar';
+import { newBooking } from './admin/new-booking';
 import { plans } from './admin/plans';
 import { settings } from './admin/settings';
 import { stats } from './admin/stats';
@@ -77,9 +78,10 @@ admin.use('*', async (c, next) => {
   await next();
 });
 
-// 注意: /plans や /settings や /agencies のルータはこの行より前にマウントすること
+// 注意: /plans や /settings や /agencies や /new のルータはこの行より前にマウントすること
 admin.route('/plans', plans);
 admin.route('/settings', settings);
 admin.route('/agencies', agencies);
 admin.route('/stats', stats);
+admin.route('/new', newBooking);
 admin.route('/', calendar);

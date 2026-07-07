@@ -2,7 +2,12 @@ import type { Child } from 'hono/jsx';
 import type { SlotStatus, PaymentMethod, BookingStatus } from '../../types';
 
 const NAV_ITEMS: { href: string; label: string }[] = [
-  { href: '/admin', label: '予約台帳' },
+  { href: '/admin', label: '台帳カレンダー' },
+  { href: '/admin/new', label: '新規予約' },
+  { href: '/admin/search', label: '予約検索' },
+  { href: '/admin/ledger', label: '予約台帳' },
+  { href: '/admin/today', label: '本日の台帳' },
+  { href: '/admin/slots', label: '予約枠' },
   { href: '/admin/requests', label: '承認待ち' },
   { href: '/admin/plans', label: 'プラン' },
   { href: '/admin/agencies', label: '代理店' },

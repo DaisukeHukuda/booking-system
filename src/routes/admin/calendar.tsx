@@ -11,6 +11,7 @@ import {
   BOOKING_BADGE_CLASSES,
   PAYMENT_LABELS
 } from './ui';
+import { resolveBack, todayJst } from './util';
 
 export const calendar = new Hono<{ Bindings: Bindings }>();
 
@@ -22,7 +23,8 @@ const OK_MESSAGES: Record<string, string> = {
   changed: '予約を変更しました',
   approved: '承認しました',
   denied: '否認しました',
-  capacity: '定員を更新しました'
+  capacity: '定員を更新しました',
+  requested: 'リクエストとして登録しました'
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -84,10 +86,6 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
   const y = Math.floor(total / 12);
   const m = (total % 12) + 1;
   return { year: y, month: m };
-}
-
-function todayJst(): string {
-  return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 }
 
 function formatStartTime(startTime: string): string {
@@ -663,6 +661,7 @@ calendar.post('/bookings', async (c) => {
   if (!plan) return c.redirect(`/admin/day/${date}?error=invalid`);
 
   const totalAmount = totalAmountInput ?? numAdults * plan.price_adult + numChildren * plan.price_child;
+  const asRequest = form.as_request === '1';
 
   const result = await createBooking(c.env.DB, {
     planId,
@@ -677,12 +676,13 @@ calendar.post('/bookings', async (c) => {
     totalAmount,
     paymentMethod: paymentMethod as PaymentMethod,
     notes,
-    createdBy: 'admin'
+    createdBy: 'admin',
+    ...(asRequest ? { status: 'requested' as const } : {})
   });
 
   if (!result.ok) return c.redirect(`/admin/day/${date}?error=unavailable`);
-  await sendBookingNotification(c.env.DB, c.env, result.bookingId, 'created');
-  return c.redirect(`/admin/day/${date}?ok=created`);
+  await sendBookingNotification(c.env.DB, c.env, result.bookingId, asRequest ? 'requested' : 'created');
+  return c.redirect(`/admin/day/${date}?ok=${asRequest ? 'requested' : 'created'}`);
 });
 
 calendar.post('/bookings/:id/cancel', async (c) => {
@@ -698,14 +698,10 @@ calendar.post('/bookings/:id/cancel', async (c) => {
   return c.redirect(`/admin/day/${date}?${ok ? 'ok=cancelled' : 'error=invalid'}`);
 });
 
-function resolveBack(v: unknown): string {
-  return typeof v === 'string' && v.startsWith('/admin/') ? v : '/admin/requests';
-}
-
 calendar.post('/bookings/:id/approve', async (c) => {
   const id = parsePositiveInt(c.req.param('id'));
   const form = await c.req.parseBody();
-  const back = resolveBack(form.back);
+  const back = resolveBack(form.back, '/admin/requests');
 
   const ok = id !== null && (await approveBooking(c.env.DB, id));
   if (ok && id !== null) await sendBookingNotification(c.env.DB, c.env, id, 'approved');
@@ -715,7 +711,7 @@ calendar.post('/bookings/:id/approve', async (c) => {
 calendar.post('/bookings/:id/deny', async (c) => {
   const id = parsePositiveInt(c.req.param('id'));
   const form = await c.req.parseBody();
-  const back = resolveBack(form.back);
+  const back = resolveBack(form.back, '/admin/requests');
 
   const ok = id !== null && (await denyBooking(c.env.DB, id));
   if (ok && id !== null) await sendBookingNotification(c.env.DB, c.env, id, 'denied');
