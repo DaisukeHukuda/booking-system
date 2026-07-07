@@ -4,7 +4,11 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-// 予約可能条件（WHERE句の断片）。スペック4章の①〜④に対応。
+// SQL内で 'HH:MM' を分に変換する式
+const MIN = (col: string) =>
+  `(CAST(substr(${col}, 1, 2) AS INTEGER) * 60 + CAST(substr(${col}, 4, 2) AS INTEGER))`;
+
+// 予約可能条件（WHERE句の断片）。スペック§4 v2 の①〜④に対応。
 // excludeBookingId は予約変更時に「自分自身の予約」を人数・リソース判定から除外するために使う。
 function slotOpenCond(
   v: { planId: number; date: string; slotTypeId: number; partySize: number },
@@ -18,19 +22,33 @@ function slotOpenCond(
       AND NOT EXISTS (SELECT 1 FROM slot_closures sc
               WHERE sc.date = ? AND sc.slot_type_id = ? AND (sc.plan_id IS NULL OR sc.plan_id = ?))
       AND (SELECT COALESCE(SUM(b.party_size), 0) FROM bookings b
-              WHERE b.plan_id = ? AND b.date = ? AND b.slot_type_id = ? AND b.status = 'confirmed'
+              WHERE b.plan_id = ? AND b.date = ? AND b.slot_type_id = ?
+                AND b.status IN ('requested', 'confirmed')
                 AND (? IS NULL OR b.id != ?)) + ?
-          <= (SELECT ps.capacity FROM plan_slots ps WHERE ps.plan_id = ? AND ps.slot_type_id = ?)
+          <= COALESCE(
+               (SELECT co.capacity FROM capacity_overrides co
+                 WHERE co.date = ? AND co.plan_id = ? AND co.slot_type_id = ?),
+               (SELECT ps.capacity FROM plan_slots ps WHERE ps.plan_id = ? AND ps.slot_type_id = ?))
       AND NOT EXISTS (SELECT 1 FROM bookings b
+              JOIN slot_types st_b ON st_b.id = b.slot_type_id
+              JOIN plans p_b ON p_b.id = b.plan_id
               JOIN plan_resources pr_o ON pr_o.plan_id = b.plan_id
               JOIN plan_resources pr_m ON pr_m.resource_id = pr_o.resource_id
-              WHERE pr_m.plan_id = ? AND b.date = ? AND b.slot_type_id = ? AND b.status = 'confirmed'
-                AND b.plan_id != ? AND (? IS NULL OR b.id != ?))`,
+              WHERE pr_m.plan_id = ? AND b.date = ?
+                AND b.status IN ('requested', 'confirmed')
+                AND NOT (b.plan_id = ? AND b.slot_type_id = ?)
+                AND (? IS NULL OR b.id != ?)
+                AND ${MIN('st_b.start_time')}
+                    < (SELECT ${MIN('st.start_time')} FROM slot_types st WHERE st.id = ?)
+                      + (SELECT p.duration_min FROM plans p WHERE p.id = ?)
+                AND (SELECT ${MIN('st.start_time')} FROM slot_types st WHERE st.id = ?)
+                    < ${MIN('st_b.start_time')} + p_b.duration_min)`,
     params: [
       v.planId, v.slotTypeId,
       v.date, v.slotTypeId, v.planId,
-      v.planId, v.date, v.slotTypeId, ex, ex, v.partySize, v.planId, v.slotTypeId,
-      v.planId, v.date, v.slotTypeId, v.planId, ex, ex
+      v.planId, v.date, v.slotTypeId, ex, ex, v.partySize,
+      v.date, v.planId, v.slotTypeId, v.planId, v.slotTypeId,
+      v.planId, v.date, v.planId, v.slotTypeId, ex, ex, v.slotTypeId, v.planId, v.slotTypeId
     ]
   };
 }
@@ -89,7 +107,21 @@ export async function changeBooking(db: D1Database, bookingId: number, ch: Booki
 
 export async function cancelBooking(db: D1Database, bookingId: number): Promise<boolean> {
   const res = await db.prepare(
-    `UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ? AND status = 'confirmed'`
+    `UPDATE bookings SET status = 'cancelled', cancelled_at = ? WHERE id = ? AND status IN ('confirmed', 'requested')`
+  ).bind(nowIso(), bookingId).run();
+  return res.meta.changes === 1;
+}
+
+export async function approveBooking(db: D1Database, bookingId: number): Promise<boolean> {
+  const res = await db.prepare(
+    `UPDATE bookings SET status = 'confirmed' WHERE id = ? AND status = 'requested'`
+  ).bind(bookingId).run();
+  return res.meta.changes === 1;
+}
+
+export async function denyBooking(db: D1Database, bookingId: number): Promise<boolean> {
+  const res = await db.prepare(
+    `UPDATE bookings SET status = 'denied', cancelled_at = ? WHERE id = ? AND status = 'requested'`
   ).bind(nowIso(), bookingId).run();
   return res.meta.changes === 1;
 }
