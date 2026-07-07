@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Bindings } from '../../types';
-import { Layout } from './ui';
+import { Layout, PAYMENT_LABELS, BOOKING_STATUS_LABELS } from './ui';
 
 export const stats = new Hono<{ Bindings: Bindings }>();
 
@@ -163,4 +163,120 @@ stats.get('/', async (c) => {
       </form>
     </Layout>
   );
+});
+
+interface ExportRow {
+  id: number;
+  date: string;
+  start_time: string;
+  slot_name: string;
+  plan_name: string;
+  customer_name: string;
+  customer_phone: string;
+  num_adults: number;
+  num_children: number;
+  party_size: number;
+  price_adult: number;
+  price_child: number;
+  total_amount: number;
+  payment_method: string;
+  payment_status: string;
+  agency_name: string | null;
+  status: string;
+  created_at: string;
+  notes: string;
+}
+
+const CSV_HEADER = [
+  '予約ID',
+  '参加日',
+  '開始時刻',
+  '時間帯',
+  'プラン',
+  '顧客名',
+  '電話',
+  '大人',
+  '小人',
+  '合計人数',
+  '大人単価',
+  '小人単価',
+  '金額',
+  '支払方法',
+  '支払状況',
+  '経路',
+  '状態',
+  '申込日時',
+  '備考'
+];
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  unpaid: '未払',
+  paid: '支払済'
+};
+
+function csvEscape(value: string | number): string {
+  const s = String(value);
+  if (/[",\r\n]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+stats.get('/export.csv', async (c) => {
+  const from = c.req.query('from') ?? '';
+  const to = c.req.query('to') ?? '';
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRe.test(from) || !dateRe.test(to)) {
+    return c.redirect('/admin/stats');
+  }
+
+  const rowsResult = await c.env.DB.prepare(
+    `SELECT b.id AS id, b.date AS date, st.start_time AS start_time, st.name AS slot_name,
+            p.name AS plan_name, b.customer_name AS customer_name, b.customer_phone AS customer_phone,
+            b.num_adults AS num_adults, b.num_children AS num_children, b.party_size AS party_size,
+            b.price_adult AS price_adult, b.price_child AS price_child, b.total_amount AS total_amount,
+            b.payment_method AS payment_method, b.payment_status AS payment_status,
+            a.name AS agency_name, b.status AS status, b.created_at AS created_at, b.notes AS notes
+     FROM bookings b
+     JOIN plans p ON p.id = b.plan_id
+     JOIN slot_types st ON st.id = b.slot_type_id
+     LEFT JOIN agencies a ON a.id = b.agency_id
+     WHERE b.date BETWEEN ?1 AND ?2
+     ORDER BY b.date, st.start_time, b.id`
+  ).bind(from, to).all<ExportRow>();
+
+  const lines = [CSV_HEADER.join(',')];
+  for (const r of rowsResult.results) {
+    const row = [
+      r.id,
+      r.date,
+      r.start_time,
+      r.slot_name,
+      r.plan_name,
+      r.customer_name,
+      r.customer_phone,
+      r.num_adults,
+      r.num_children,
+      r.party_size,
+      r.price_adult,
+      r.price_child,
+      r.total_amount,
+      PAYMENT_LABELS[r.payment_method as keyof typeof PAYMENT_LABELS] ?? r.payment_method,
+      PAYMENT_STATUS_LABELS[r.payment_status] ?? r.payment_status,
+      r.agency_name ?? '自社',
+      BOOKING_STATUS_LABELS[r.status as keyof typeof BOOKING_STATUS_LABELS] ?? r.status,
+      r.created_at,
+      r.notes
+    ];
+    lines.push(row.map(csvEscape).join(','));
+  }
+
+  // 先頭にBOMを2つ書き込む: Fetch/TextDecoderの標準UTF-8デコードは
+  // ストリーム先頭のBOM(EF BB BF)を1つだけ消費して符号化シグネチャとして扱うため、
+  // デコード後の文字列にBOM文字を残すには2つ書き込む必要がある。
+  const body = '﻿﻿' + lines.join('\r\n') + '\r\n';
+
+  c.header('content-type', 'text/csv; charset=utf-8');
+  c.header('content-disposition', `attachment; filename="reservations_${from}_${to}.csv"`);
+  return c.body(body);
 });
