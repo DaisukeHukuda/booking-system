@@ -6,7 +6,7 @@
     {
       "binding": "DB",
       "database_name": "booking-system",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "473bb21b-87e6-4c8d-81cf-0fe5a959ce72",
       "migrations_dir": "migrations"
     }
   ]
