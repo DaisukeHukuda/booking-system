@@ -33,6 +33,7 @@ describe('admin day detail', () => {
     expect(html).toContain(`残${CAP_A - 2}`);          // AのAM残席
     expect(html).toContain('action="/admin/bookings"');
     expect(html).toContain('現地現金');
+    expect(html).toContain('大2');
   });
 
   it('新規予約を登録でき、日別ページへリダイレクトされる', async () => {
@@ -40,17 +41,34 @@ describe('admin day detail', () => {
       ...form({
         plan_id: String(PLAN_A), slot_type_id: String(SLOT_AM), date: D,
         customer_name: '電話予約の客', customer_phone: '080-1111-2222',
-        party_size: '3', total_amount: '24000', payment_method: 'onsite_cash', notes: ''
+        num_adults: '2', num_children: '1', total_amount: '24000', payment_method: 'onsite_cash', notes: ''
       }),
       headers: { ...form({}).headers, cookie }
     }, env);
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe(`/admin/day/${D}?ok=created`);
     const row = await env.DB.prepare(
-      `SELECT customer_name, party_size, created_by FROM bookings WHERE customer_name = '電話予約の客'`
-    ).first<{ customer_name: string; party_size: number; created_by: string }>();
+      `SELECT customer_name, party_size, num_adults, num_children, created_by FROM bookings WHERE customer_name = '電話予約の客'`
+    ).first<{ customer_name: string; party_size: number; num_adults: number; num_children: number; created_by: string }>();
     expect(row?.party_size).toBe(3);
+    expect(row?.num_adults).toBe(2);
+    expect(row?.num_children).toBe(1);
     expect(row?.created_by).toBe('admin');
+  });
+
+  it('total_amount を空にするとプラン単価から自動計算される（大人2小人1）', async () => {
+    const res = await app.request('/admin/bookings', {
+      ...form({
+        plan_id: String(PLAN_A), slot_type_id: String(SLOT_AM), date: D,
+        customer_name: '自動計算', customer_phone: '', num_adults: '2', num_children: '1',
+        total_amount: '', payment_method: 'onsite_cash', notes: ''
+      }),
+      headers: { ...form({}).headers, cookie }
+    }, env);
+    expect(res.status).toBe(302);
+    const row = await env.DB.prepare(`SELECT total_amount, price_adult, price_child FROM bookings WHERE customer_name = '自動計算'`)
+      .first<{ total_amount: number; price_adult: number; price_child: number }>();
+    expect(row).toEqual({ total_amount: 8000 * 2 + 4000 * 1, price_adult: 8000, price_child: 4000 });
   });
 
   it('連動クローズ枠への登録は error=unavailable で戻される', async () => {
@@ -58,7 +76,7 @@ describe('admin day detail', () => {
     const res = await app.request('/admin/bookings', {
       ...form({
         plan_id: String(PLAN_B), slot_type_id: String(SLOT_AM), date: D,
-        customer_name: '無理な客', customer_phone: '', party_size: '1',
+        customer_name: '無理な客', customer_phone: '', num_adults: '1', num_children: '0',
         total_amount: '0', payment_method: 'onsite_cash', notes: ''
       }),
       headers: { ...form({}).headers, cookie }
@@ -73,7 +91,7 @@ describe('admin day detail', () => {
     const res = await app.request('/admin/bookings', {
       ...form({
         plan_id: String(PLAN_A), slot_type_id: String(SLOT_AM), date: D,
-        customer_name: '', customer_phone: '', party_size: '2',
+        customer_name: '', customer_phone: '', num_adults: '2', num_children: '0',
         total_amount: '0', payment_method: 'onsite_cash', notes: ''
       }),
       headers: { ...form({}).headers, cookie }

@@ -32,14 +32,17 @@ describe('admin plans', () => {
     expect(html).toContain('プランA');
     expect(html).toContain('プランD');
     expect(html).toContain('8000');
+    expect(html).toContain('120分');
   });
 
   it('プランを新規作成できる', async () => {
-    const res = await app.request('/admin/plans', form({ name: '新プラン', price: '5000' }, cookie), env);
+    const res = await app.request('/admin/plans', form({
+      name: '新プラン', price_adult: '5000', price_child: '2500', duration_min: '90'
+    }, cookie), env);
     expect(res.status).toBe(302);
-    const row = await env.DB.prepare(`SELECT name, price_adult, active FROM plans WHERE name = '新プラン'`)
-      .first<{ name: string; price_adult: number; active: number }>();
-    expect(row).toEqual({ name: '新プラン', price_adult: 5000, active: 1 });
+    const row = await env.DB.prepare(`SELECT name, price_adult, price_child, duration_min, active FROM plans WHERE name = '新プラン'`)
+      .first<{ name: string; price_adult: number; price_child: number; duration_min: number; active: number }>();
+    expect(row).toEqual({ name: '新プラン', price_adult: 5000, price_child: 2500, duration_min: 90, active: 1 });
   });
 
   it('編集フォームに現在の値・リソース・定員が表示される', async () => {
@@ -49,11 +52,13 @@ describe('admin plans', () => {
     expect(html).toContain('value="プランA"');
     expect(html).toContain('インストラクター1');
     expect(html).toContain('value="6"'); // AM定員
+    expect(html).toContain('value="8000"'); // 大人料金
+    expect(html).toContain('value="120"'); // 所要時間
   });
 
   it('プランを更新できる（リソース割当と定員の変更込み）', async () => {
     const res = await app.request(`/admin/plans/${PLAN_A}`, form({
-      name: 'プランA改', description: '説明', price: '9000', sort_order: '1', active: '1',
+      name: 'プランA改', description: '説明', price_adult: '9000', price_child: '4500', duration_min: '120', sort_order: '1', active: '1',
       'resource_ids[]': ['2'],
       slot_active_1: '1', slot_capacity_1: '5',
       slot_active_2: '1', slot_capacity_2: '6'
@@ -72,7 +77,7 @@ describe('admin plans', () => {
 
   it('リソース変更が在庫連動に反映される（AをボートにするとDと競合）', async () => {
     await app.request(`/admin/plans/${PLAN_A}`, form({
-      name: 'プランA', description: '', price: '8000', sort_order: '1', active: '1',
+      name: 'プランA', description: '', price_adult: '8000', price_child: '4000', duration_min: '120', sort_order: '1', active: '1',
       'resource_ids[]': ['2'],
       slot_active_1: '1', slot_capacity_1: '6',
       slot_active_2: '1', slot_capacity_2: '6'
@@ -83,7 +88,7 @@ describe('admin plans', () => {
 
   it('時間帯の催行を外せる（plan_slotsがinactiveになり予約不可）', async () => {
     await app.request(`/admin/plans/${PLAN_A}`, form({
-      name: 'プランA', description: '', price: '8000', sort_order: '1', active: '1',
+      name: 'プランA', description: '', price_adult: '8000', price_child: '4000', duration_min: '120', sort_order: '1', active: '1',
       'resource_ids[]': ['1'],
       slot_capacity_1: '6',              // slot_active_1 なし = チェック外し
       slot_active_2: '1', slot_capacity_2: '6'

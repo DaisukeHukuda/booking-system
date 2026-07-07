@@ -42,7 +42,7 @@ describe('admin booking edit', () => {
     const id = await setup();
     const res = await app.request(`/admin/bookings/${id}`, form({
       plan_id: String(PLAN_A), slot_type_id: String(SLOT_PM), date: D,
-      party_size: '2', total_amount: '16000',
+      num_adults: '2', num_children: '0', total_amount: '16000',
       customer_name: '変更後の名前', customer_phone: '070-9999-8888', notes: 'メモ'
     }, cookie), env);
     expect(res.status).toBe(302);
@@ -57,7 +57,7 @@ describe('admin booking edit', () => {
     await createBooking(env.DB, makeBooking({ planId: PLAN_C, slotTypeId: SLOT_PM, customerName: '午後の先客' }));
     const res = await app.request(`/admin/bookings/${id}`, form({
       plan_id: String(PLAN_A), slot_type_id: String(SLOT_PM), date: D,
-      party_size: '2', total_amount: '16000',
+      num_adults: '2', num_children: '0', total_amount: '16000',
       customer_name: 'テスト太郎', customer_phone: '090-0000-0000', notes: ''
     }, cookie), env);
     expect(res.status).toBe(302);

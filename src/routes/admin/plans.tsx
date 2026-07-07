@@ -37,6 +37,8 @@ interface PlanRow {
   name: string;
   description: string;
   price_adult: number;
+  price_child: number;
+  duration_min: number;
   active: number;
   sort_order: number;
 }
@@ -98,6 +100,7 @@ plans.get('/', async (c) => {
           <tr>
             <th>名前</th>
             <th>価格</th>
+            <th>所要時間</th>
             <th>有効</th>
             <th>割当リソース</th>
             <th>時間帯別定員</th>
@@ -108,7 +111,8 @@ plans.get('/', async (c) => {
           {planRows.map((p) => (
             <tr>
               <td>{p.name}</td>
-              <td>{p.price_adult}</td>
+              <td>大人{p.price_adult}/小人{p.price_child}</td>
+              <td>{p.duration_min}分</td>
               <td>{p.active ? '有効' : '無効'}</td>
               <td>{(resourceNamesByPlan.get(p.id) ?? []).join(', ')}</td>
               <td>{(slotLabelsByPlan.get(p.id) ?? []).join(', ')}</td>
@@ -126,7 +130,13 @@ plans.get('/', async (c) => {
           名前: <input type="text" name="name" required />
         </label>{' '}
         <label>
-          価格: <input type="number" name="price" min="0" value="0" />
+          大人料金: <input type="number" name="price_adult" min="0" value="0" />
+        </label>{' '}
+        <label>
+          小人料金: <input type="number" name="price_child" min="0" value="0" />
+        </label>{' '}
+        <label>
+          所要時間（分）: <input type="number" name="duration_min" min="1" value="120" />
         </label>{' '}
         <button type="submit">作成</button>
       </form>
@@ -137,16 +147,18 @@ plans.get('/', async (c) => {
 plans.post('/', async (c) => {
   const form = await c.req.parseBody();
   const name = typeof form.name === 'string' ? form.name.trim() : '';
-  const price = parseNonNegativeInt(form.price);
+  const priceAdult = parseNonNegativeInt(form.price_adult);
+  const priceChild = parseNonNegativeInt(form.price_child);
+  const durationMin = parsePositiveInt(form.duration_min);
 
-  if (name === '' || price === null) {
+  if (name === '' || priceAdult === null || priceChild === null || durationMin === null) {
     return c.redirect('/admin/plans?error=invalid');
   }
 
   await c.env.DB.prepare(
-    `INSERT INTO plans (name, price_adult, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
+    `INSERT INTO plans (name, price_adult, price_child, duration_min, sort_order) VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
   )
-    .bind(name, price)
+    .bind(name, priceAdult, priceChild, durationMin)
     .run();
 
   return c.redirect('/admin/plans?ok=created');
@@ -198,7 +210,13 @@ plans.get('/:id/edit', async (c) => {
           説明: <textarea name="description">{plan.description}</textarea>
         </label>{' '}
         <label>
-          価格: <input type="number" name="price" min="0" value={plan.price_adult} />
+          大人料金: <input type="number" name="price_adult" min="0" value={plan.price_adult} />
+        </label>{' '}
+        <label>
+          小人料金: <input type="number" name="price_child" min="0" value={plan.price_child} />
+        </label>{' '}
+        <label>
+          所要時間（分）: <input type="number" name="duration_min" min="1" value={plan.duration_min} />
         </label>{' '}
         <label>
           表示順: <input type="number" name="sort_order" min="0" value={plan.sort_order} />
@@ -255,7 +273,9 @@ plans.post('/:id', async (c) => {
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const description = typeof body.description === 'string' ? body.description : '';
-  const price = parseNonNegativeInt(body.price);
+  const priceAdult = parseNonNegativeInt(body.price_adult);
+  const priceChild = parseNonNegativeInt(body.price_child);
+  const durationMin = parsePositiveInt(body.duration_min);
   const sortOrder = parseNonNegativeInt(body.sort_order);
   const active = body.active !== undefined ? 1 : 0;
   const resourceIds = toIdArray(body['resource_ids[]']);
@@ -263,7 +283,7 @@ plans.post('/:id', async (c) => {
   const slotTypesResult = await c.env.DB.prepare('SELECT id FROM slot_types').all<{ id: number }>();
   const slotTypeIds = slotTypesResult.results.map((st) => st.id);
 
-  if (name === '' || price === null || sortOrder === null) {
+  if (name === '' || priceAdult === null || priceChild === null || durationMin === null || sortOrder === null) {
     return c.redirect(`/admin/plans/${id}/edit?error=invalid`);
   }
 
@@ -280,8 +300,8 @@ plans.post('/:id', async (c) => {
 
   const statements = [
     c.env.DB.prepare(
-      `UPDATE plans SET name = ?, description = ?, price_adult = ?, sort_order = ?, active = ? WHERE id = ?`
-    ).bind(name, description, price, sortOrder, active, id),
+      `UPDATE plans SET name = ?, description = ?, price_adult = ?, price_child = ?, duration_min = ?, sort_order = ?, active = ? WHERE id = ?`
+    ).bind(name, description, priceAdult, priceChild, durationMin, sortOrder, active, id),
     c.env.DB.prepare(`DELETE FROM plan_resources WHERE plan_id = ?`).bind(id),
     ...resourceIds.map((resourceId) =>
       c.env.DB.prepare(`INSERT INTO plan_resources (plan_id, resource_id) VALUES (?, ?)`).bind(id, resourceId)

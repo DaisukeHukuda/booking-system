@@ -41,6 +41,10 @@ interface BookingRow {
   customer_name: string;
   customer_phone: string;
   party_size: number;
+  num_adults: number;
+  num_children: number;
+  price_adult: number;
+  price_child: number;
   total_amount: number;
   payment_method: PaymentMethod;
   notes: string;
@@ -295,7 +299,7 @@ calendar.get('/day/:date', async (c) => {
               <td>{b.plan_name}</td>
               <td>{b.customer_name}</td>
               <td>{b.customer_phone}</td>
-              <td>{b.party_size}</td>
+              <td>大{b.num_adults}小{b.num_children}</td>
               <td>{b.total_amount}</td>
               <td>{PAYMENT_LABELS[b.payment_method]}</td>
               <td>{b.agency_name ?? '自社'}</td>
@@ -342,10 +346,13 @@ calendar.get('/day/:date', async (c) => {
           電話: <input type="text" name="customer_phone" />
         </label>{' '}
         <label>
-          人数: <input type="number" name="party_size" min="1" value="1" />
+          大人人数: <input type="number" name="num_adults" min="0" value="1" />
         </label>{' '}
         <label>
-          金額: <input type="number" name="total_amount" min="0" value="0" />
+          小人人数: <input type="number" name="num_children" min="0" value="0" />
+        </label>{' '}
+        <label>
+          金額（空欄でプラン単価から自動計算）: <input type="number" name="total_amount" min="0" />
         </label>{' '}
         <label>
           支払方法:{' '}
@@ -371,8 +378,10 @@ calendar.post('/bookings', async (c) => {
 
   const planId = parsePositiveInt(form.plan_id);
   const slotTypeId = parsePositiveInt(form.slot_type_id);
-  const partySize = parsePositiveInt(form.party_size);
-  const totalAmount = parseNonNegativeInt(form.total_amount);
+  const numAdults = parseNonNegativeInt(form.num_adults);
+  const numChildren = parseNonNegativeInt(form.num_children);
+  const totalAmountRaw = typeof form.total_amount === 'string' ? form.total_amount.trim() : '';
+  const totalAmountInput = totalAmountRaw === '' ? null : parseNonNegativeInt(form.total_amount);
   const customerName = typeof form.customer_name === 'string' ? form.customer_name.trim() : '';
   const paymentMethod = typeof form.payment_method === 'string' ? form.payment_method : '';
   const customerPhone = typeof form.customer_phone === 'string' ? form.customer_phone : '';
@@ -381,8 +390,10 @@ calendar.post('/bookings', async (c) => {
   if (
     planId === null ||
     slotTypeId === null ||
-    partySize === null ||
-    totalAmount === null ||
+    numAdults === null ||
+    numChildren === null ||
+    numAdults + numChildren < 1 ||
+    (totalAmountRaw !== '' && totalAmountInput === null) ||
     customerName === '' ||
     !(paymentMethod in PAYMENT_LABELS)
   ) {
@@ -394,14 +405,16 @@ calendar.post('/bookings', async (c) => {
     .first<{ price_adult: number; price_child: number }>();
   if (!plan) return c.redirect(`/admin/day/${date}?error=invalid`);
 
+  const totalAmount = totalAmountInput ?? numAdults * plan.price_adult + numChildren * plan.price_child;
+
   const result = await createBooking(c.env.DB, {
     planId,
     date,
     slotTypeId,
     customerName,
     customerPhone,
-    numAdults: partySize,
-    numChildren: 0,
+    numAdults,
+    numChildren,
     priceAdult: plan.price_adult,
     priceChild: plan.price_child,
     totalAmount,
@@ -486,10 +499,13 @@ calendar.get('/bookings/:id/edit', async (c) => {
           電話: <input type="text" name="customer_phone" value={booking.customer_phone} />
         </label>{' '}
         <label>
-          人数: <input type="number" name="party_size" min="1" value={booking.party_size} />
+          大人人数: <input type="number" name="num_adults" min="0" value={booking.num_adults} />
         </label>{' '}
         <label>
-          金額: <input type="number" name="total_amount" min="0" value={booking.total_amount} />
+          小人人数: <input type="number" name="num_children" min="0" value={booking.num_children} />
+        </label>{' '}
+        <label>
+          金額（空欄でプラン単価から自動計算）: <input type="number" name="total_amount" min="0" value={booking.total_amount} />
         </label>{' '}
         <label>
           備考: <textarea name="notes">{booking.notes}</textarea>
@@ -508,8 +524,10 @@ calendar.post('/bookings/:id', async (c) => {
   const date = typeof form.date === 'string' ? form.date : '';
   const planId = parsePositiveInt(form.plan_id);
   const slotTypeId = parsePositiveInt(form.slot_type_id);
-  const partySize = parsePositiveInt(form.party_size);
-  const totalAmount = parseNonNegativeInt(form.total_amount);
+  const numAdults = parseNonNegativeInt(form.num_adults);
+  const numChildren = parseNonNegativeInt(form.num_children);
+  const totalAmountRaw = typeof form.total_amount === 'string' ? form.total_amount.trim() : '';
+  const totalAmountInput = totalAmountRaw === '' ? null : parseNonNegativeInt(form.total_amount);
   const customerName = typeof form.customer_name === 'string' ? form.customer_name.trim() : '';
   const customerPhone = typeof form.customer_phone === 'string' ? form.customer_phone : '';
   const notes = typeof form.notes === 'string' ? form.notes : '';
@@ -518,19 +536,30 @@ calendar.post('/bookings/:id', async (c) => {
     !DATE_RE.test(date) ||
     planId === null ||
     slotTypeId === null ||
-    partySize === null ||
-    totalAmount === null ||
+    numAdults === null ||
+    numChildren === null ||
+    numAdults + numChildren < 1 ||
+    (totalAmountRaw !== '' && totalAmountInput === null) ||
     customerName === ''
   ) {
     return c.redirect(`/admin/bookings/${id}/edit?error=invalid`);
+  }
+
+  let totalAmount = totalAmountInput;
+  if (totalAmount === null) {
+    const existing = await c.env.DB.prepare('SELECT price_adult, price_child FROM bookings WHERE id = ?')
+      .bind(id)
+      .first<{ price_adult: number; price_child: number }>();
+    if (!existing) return c.redirect(`/admin/bookings/${id}/edit?error=invalid`);
+    totalAmount = numAdults * existing.price_adult + numChildren * existing.price_child;
   }
 
   const result = await changeBooking(c.env.DB, id, {
     planId,
     date,
     slotTypeId,
-    numAdults: partySize,
-    numChildren: 0,
+    numAdults,
+    numChildren,
     totalAmount,
     notes
   });
