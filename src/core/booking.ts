@@ -125,3 +125,12 @@ export async function denyBooking(db: D1Database, bookingId: number): Promise<bo
   ).bind(nowIso(), bookingId).run();
   return res.meta.changes === 1;
 }
+
+// 代理店は自店の予約のみキャンセルできる（agency_id 条件込みの1文UPDATEで所有権チェックも原子的に行う）
+export async function cancelBookingForAgency(db: D1Database, bookingId: number, agencyId: number): Promise<boolean> {
+  const res = await db.prepare(
+    `UPDATE bookings SET status = 'cancelled', cancelled_at = ?
+     WHERE id = ? AND agency_id = ? AND status IN ('confirmed', 'requested')`
+  ).bind(new Date().toISOString(), bookingId, agencyId).run();
+  return res.meta.changes === 1;
+}
