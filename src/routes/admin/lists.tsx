@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Bindings, BookingStatus, PaymentMethod } from '../../types';
 import { Layout, BOOKING_STATUS_LABELS, BOOKING_BADGE_CLASSES, PAYMENT_LABELS } from './ui';
+import { todayJst } from './util';
 
 export const lists = new Hono<{ Bindings: Bindings }>();
 
@@ -198,6 +199,149 @@ lists.get('/search', async (c) => {
             </table>
           </div>
         ))}
+    </Layout>
+  );
+});
+
+interface LedgerRow {
+  id: number;
+  plan_id: number;
+  date: string;
+  status: BookingStatus;
+  customer_name: string;
+  customer_phone: string;
+  num_adults: number;
+  num_children: number;
+  total_amount: number;
+  payment_method: PaymentMethod;
+  plan_name: string;
+  slot_name: string;
+  agency_name: string | null;
+}
+
+function addDaysJst(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+lists.get('/ledger', async (c) => {
+  const fromParam = c.req.query('from') ?? '';
+  const toParam = c.req.query('to') ?? '';
+  const includeCancelled = c.req.query('include_cancelled') === '1';
+
+  const from = DATE_RE.test(fromParam) ? fromParam : todayJst();
+  const to = DATE_RE.test(toParam) ? toParam : addDaysJst(from, 30);
+
+  const statusFilter = includeCancelled ? '' : `AND b.status IN ('confirmed', 'requested')`;
+
+  const result = await c.env.DB.prepare(
+    `SELECT b.*, p.name AS plan_name, st.name AS slot_name, a.name AS agency_name
+     FROM bookings b
+     JOIN plans p ON p.id = b.plan_id
+     JOIN slot_types st ON st.id = b.slot_type_id
+     LEFT JOIN agencies a ON a.id = b.agency_id
+     WHERE b.date BETWEEN ? AND ?
+     ${statusFilter}
+     ORDER BY b.date ASC, st.sort_order ASC, b.id ASC`
+  ).bind(from, to).all<LedgerRow>();
+  const rows = result.results;
+
+  const summary = await c.env.DB.prepare(
+    `SELECT COUNT(*) AS cnt, COALESCE(SUM(num_adults + num_children), 0) AS people, COALESCE(SUM(total_amount), 0) AS amount
+     FROM bookings
+     WHERE date BETWEEN ? AND ? AND status IN ('confirmed', 'requested')`
+  ).bind(from, to).first<{ cnt: number; people: number; amount: number }>();
+
+  return c.html(
+    <Layout title="予約台帳" active="/admin/ledger">
+      <div class="page-head">
+        <span class="eyebrow">Ledger List</span>
+        <h1>予約台帳</h1>
+      </div>
+      <form class="card card-pad" method="get" action="/admin/ledger">
+        <div class="form-grid">
+          <div class="field">
+            <label>期間（から）</label>
+            <input type="date" name="from" value={from} />
+          </div>
+          <div class="field">
+            <label>期間（まで）</label>
+            <input type="date" name="to" value={to} />
+          </div>
+          <div class="field">
+            <label>
+              <input type="checkbox" name="include_cancelled" value="1" checked={includeCancelled} /> 取消・否認も表示
+            </label>
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <button class="btn btn-primary btn-lg" type="submit">
+            表示
+          </button>
+          <a class="btn btn-sm" href={`/admin/stats/export.csv?from=${from}&to=${to}`}>
+            CSVダウンロード
+          </a>
+        </div>
+      </form>
+
+      <p>
+        {summary?.cnt ?? 0}件・{summary?.people ?? 0}名・{summary?.amount ?? 0}円
+      </p>
+
+      {rows.length === 0 ? (
+        <p>該当する予約がありません</p>
+      ) : (
+        <div class="tbl-wrap tbl-cards">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>参加日</th>
+                <th>時間帯</th>
+                <th>プラン</th>
+                <th>顧客</th>
+                <th>電話</th>
+                <th>人数</th>
+                <th class="r">金額</th>
+                <th>支払</th>
+                <th>経路</th>
+                <th>状態</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((b) => {
+                const muted = b.status === 'cancelled' || b.status === 'denied';
+                return (
+                  <tr class={muted ? 'row-muted' : undefined}>
+                    <td data-label="参加日">
+                      <a href={`/admin/day/${b.date}`}>{b.date}</a>
+                    </td>
+                    <td data-label="時間帯" class="num">
+                      {b.slot_name}
+                    </td>
+                    <td data-label="プラン">{b.plan_name}</td>
+                    <td data-label="顧客">{b.customer_name}</td>
+                    <td data-label="電話" class="num">
+                      {b.customer_phone}
+                    </td>
+                    <td data-label="人数">
+                      大{b.num_adults} 小{b.num_children}
+                    </td>
+                    <td data-label="金額" class="num r">
+                      {b.total_amount}
+                    </td>
+                    <td data-label="支払">{PAYMENT_LABELS[b.payment_method]}</td>
+                    <td data-label="経路">{b.agency_name ?? '自社'}</td>
+                    <td data-label="状態">
+                      <span class={`badge ${BOOKING_BADGE_CLASSES[b.status]}`}>{BOOKING_STATUS_LABELS[b.status]}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Layout>
   );
 });
