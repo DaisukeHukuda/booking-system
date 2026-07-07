@@ -16,7 +16,7 @@ function form(data: Record<string, string>, cookie: string) {
 }
 
 async function setup(): Promise<number> {
-  const created = await createBooking(env.DB, makeBooking({ partySize: 2 }));
+  const created = await createBooking(env.DB, makeBooking({ numAdults: 2 }));
   if (!created.ok) throw new Error('setup failed');
   return created.bookingId;
 }

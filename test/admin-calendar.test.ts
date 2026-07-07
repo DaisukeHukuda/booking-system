@@ -23,7 +23,7 @@ describe('admin calendar', () => {
   });
 
   it('予約が入っている日に人数が表示される', async () => {
-    await createBooking(env.DB, makeBooking({ planId: PLAN_A, partySize: 3 }));
+    await createBooking(env.DB, makeBooking({ planId: PLAN_A, numAdults: 3 }));
     const cookie = await adminCookie();
     const res = await app.request('/admin?month=2026-08', { headers: { cookie } }, env);
     const html = await res.text();

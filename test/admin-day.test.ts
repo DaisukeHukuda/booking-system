@@ -23,7 +23,7 @@ describe('admin day detail', () => {
   });
 
   it('空き状況の表と予約一覧・新規予約フォームが表示される', async () => {
-    await createBooking(env.DB, makeBooking({ partySize: 2 }));
+    await createBooking(env.DB, makeBooking({ numAdults: 2 }));
     const res = await app.request(`/admin/day/${D}`, { headers: { cookie } }, env);
     expect(res.status).toBe(200);
     const html = await res.text();

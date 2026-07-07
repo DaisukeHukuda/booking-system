@@ -37,9 +37,9 @@ describe('admin plans', () => {
   it('プランを新規作成できる', async () => {
     const res = await app.request('/admin/plans', form({ name: '新プラン', price: '5000' }, cookie), env);
     expect(res.status).toBe(302);
-    const row = await env.DB.prepare(`SELECT name, price, active FROM plans WHERE name = '新プラン'`)
-      .first<{ name: string; price: number; active: number }>();
-    expect(row).toEqual({ name: '新プラン', price: 5000, active: 1 });
+    const row = await env.DB.prepare(`SELECT name, price_adult, active FROM plans WHERE name = '新プラン'`)
+      .first<{ name: string; price_adult: number; active: number }>();
+    expect(row).toEqual({ name: '新プラン', price_adult: 5000, active: 1 });
   });
 
   it('編集フォームに現在の値・リソース・定員が表示される', async () => {
@@ -59,9 +59,9 @@ describe('admin plans', () => {
       slot_active_2: '1', slot_capacity_2: '6'
     }, cookie), env);
     expect(res.status).toBe(302);
-    const plan = await env.DB.prepare(`SELECT name, price FROM plans WHERE id = ?`).bind(PLAN_A)
-      .first<{ name: string; price: number }>();
-    expect(plan).toEqual({ name: 'プランA改', price: 9000 });
+    const plan = await env.DB.prepare(`SELECT name, price_adult FROM plans WHERE id = ?`).bind(PLAN_A)
+      .first<{ name: string; price_adult: number }>();
+    expect(plan).toEqual({ name: 'プランA改', price_adult: 9000 });
     const resources = await env.DB.prepare(`SELECT resource_id FROM plan_resources WHERE plan_id = ? ORDER BY resource_id`)
       .bind(PLAN_A).all<{ resource_id: number }>();
     expect(resources.results.map((r) => r.resource_id)).toEqual([2]);

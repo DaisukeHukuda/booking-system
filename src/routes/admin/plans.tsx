@@ -36,7 +36,7 @@ interface PlanRow {
   id: number;
   name: string;
   description: string;
-  price: number;
+  price_adult: number;
   active: number;
   sort_order: number;
 }
@@ -108,7 +108,7 @@ plans.get('/', async (c) => {
           {planRows.map((p) => (
             <tr>
               <td>{p.name}</td>
-              <td>{p.price}</td>
+              <td>{p.price_adult}</td>
               <td>{p.active ? '有効' : '無効'}</td>
               <td>{(resourceNamesByPlan.get(p.id) ?? []).join(', ')}</td>
               <td>{(slotLabelsByPlan.get(p.id) ?? []).join(', ')}</td>
@@ -144,7 +144,7 @@ plans.post('/', async (c) => {
   }
 
   await c.env.DB.prepare(
-    `INSERT INTO plans (name, price, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
+    `INSERT INTO plans (name, price_adult, sort_order) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
   )
     .bind(name, price)
     .run();
@@ -198,7 +198,7 @@ plans.get('/:id/edit', async (c) => {
           説明: <textarea name="description">{plan.description}</textarea>
         </label>{' '}
         <label>
-          価格: <input type="number" name="price" min="0" value={plan.price} />
+          価格: <input type="number" name="price" min="0" value={plan.price_adult} />
         </label>{' '}
         <label>
           表示順: <input type="number" name="sort_order" min="0" value={plan.sort_order} />
@@ -280,7 +280,7 @@ plans.post('/:id', async (c) => {
 
   const statements = [
     c.env.DB.prepare(
-      `UPDATE plans SET name = ?, description = ?, price = ?, sort_order = ?, active = ? WHERE id = ?`
+      `UPDATE plans SET name = ?, description = ?, price_adult = ?, sort_order = ?, active = ? WHERE id = ?`
     ).bind(name, description, price, sortOrder, active, id),
     c.env.DB.prepare(`DELETE FROM plan_resources WHERE plan_id = ?`).bind(id),
     ...resourceIds.map((resourceId) =>

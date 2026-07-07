@@ -2,7 +2,9 @@ CREATE TABLE plans (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  price INTEGER NOT NULL DEFAULT 0,
+  price_adult INTEGER NOT NULL DEFAULT 0,
+  price_child INTEGER NOT NULL DEFAULT 0,
+  duration_min INTEGER NOT NULL DEFAULT 120 CHECK (duration_min > 0),
   active INTEGER NOT NULL DEFAULT 1,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
@@ -44,11 +46,20 @@ CREATE TABLE slot_closures (
 );
 CREATE INDEX idx_slot_closures_date ON slot_closures (date, slot_type_id);
 
+CREATE TABLE capacity_overrides (
+  date TEXT NOT NULL,
+  plan_id INTEGER NOT NULL REFERENCES plans(id),
+  slot_type_id INTEGER NOT NULL REFERENCES slot_types(id),
+  capacity INTEGER NOT NULL CHECK (capacity >= 0),
+  PRIMARY KEY (date, plan_id, slot_type_id)
+);
+
 CREATE TABLE agencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,
   email TEXT,
+  booking_mode TEXT NOT NULL DEFAULT 'request' CHECK (booking_mode IN ('realtime', 'request')),
   active INTEGER NOT NULL DEFAULT 1,
   notes TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL
@@ -60,9 +71,13 @@ CREATE TABLE bookings (
   date TEXT NOT NULL,
   slot_type_id INTEGER NOT NULL REFERENCES slot_types(id),
   agency_id INTEGER REFERENCES agencies(id),
-  status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('requested', 'confirmed', 'cancelled', 'denied')),
   customer_name TEXT NOT NULL,
   customer_phone TEXT NOT NULL DEFAULT '',
+  num_adults INTEGER NOT NULL DEFAULT 0 CHECK (num_adults >= 0),
+  num_children INTEGER NOT NULL DEFAULT 0 CHECK (num_children >= 0),
+  price_adult INTEGER NOT NULL DEFAULT 0,
+  price_child INTEGER NOT NULL DEFAULT 0,
   party_size INTEGER NOT NULL CHECK (party_size > 0),
   total_amount INTEGER NOT NULL DEFAULT 0,
   payment_method TEXT NOT NULL DEFAULT 'onsite_cash' CHECK (payment_method IN ('onsite_cash', 'onsite_card', 'invoice', 'stripe')),

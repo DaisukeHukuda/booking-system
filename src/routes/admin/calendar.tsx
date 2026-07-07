@@ -389,13 +389,21 @@ calendar.post('/bookings', async (c) => {
     return c.redirect(`/admin/day/${date}?error=invalid`);
   }
 
+  const plan = await c.env.DB.prepare('SELECT price_adult, price_child FROM plans WHERE id = ?')
+    .bind(planId)
+    .first<{ price_adult: number; price_child: number }>();
+  if (!plan) return c.redirect(`/admin/day/${date}?error=invalid`);
+
   const result = await createBooking(c.env.DB, {
     planId,
     date,
     slotTypeId,
     customerName,
     customerPhone,
-    partySize,
+    numAdults: partySize,
+    numChildren: 0,
+    priceAdult: plan.price_adult,
+    priceChild: plan.price_child,
     totalAmount,
     paymentMethod: paymentMethod as PaymentMethod,
     notes,
@@ -521,7 +529,8 @@ calendar.post('/bookings/:id', async (c) => {
     planId,
     date,
     slotTypeId,
-    partySize,
+    numAdults: partySize,
+    numChildren: 0,
     totalAmount,
     notes
   });

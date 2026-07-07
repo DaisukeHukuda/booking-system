@@ -26,7 +26,7 @@ describe('getAvailability', () => {
 
   it('予約なし: 全プラン・全時間帯が open で残席=定員', async () => {
     const avail = await getAvailability(env.DB, D, D);
-    expect(avail).toHaveLength(8); // 4プラン × 2時間帯 × 1日
+    expect(avail).toHaveLength(9); // plan_slots 9行分
     const a = slot(avail, PLAN_A, D, SLOT_AM);
     expect(a.status).toBe('open');
     expect(a.remaining).toBe(CAP_A);
@@ -89,6 +89,6 @@ describe('getAvailability', () => {
 
   it('日付範囲: 3日分を要求すると日数分の結果が返る', async () => {
     const avail = await getAvailability(env.DB, '2026-08-01', '2026-08-03');
-    expect(avail).toHaveLength(8 * 3);
+    expect(avail).toHaveLength(9 * 3);
   });
 });

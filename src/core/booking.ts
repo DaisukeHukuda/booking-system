@@ -36,15 +36,20 @@ function slotOpenCond(
 }
 
 export async function createBooking(db: D1Database, nb: NewBooking): Promise<BookingResult> {
-  const cond = slotOpenCond(nb, null);
+  const partySize = nb.numAdults + nb.numChildren;
+  if (partySize < 1) return { ok: false, reason: 'slot_unavailable' };
+
+  const cond = slotOpenCond({ planId: nb.planId, date: nb.date, slotTypeId: nb.slotTypeId, partySize }, null);
   const res = await db.prepare(
     `INSERT INTO bookings (plan_id, date, slot_type_id, agency_id, status, customer_name, customer_phone,
+                           num_adults, num_children, price_adult, price_child,
                            party_size, total_amount, payment_method, payment_status, notes, created_by, created_at)
-     SELECT ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, 'unpaid', ?, ?, ?
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unpaid', ?, ?, ?
      WHERE ${cond.sql}`
   ).bind(
-    nb.planId, nb.date, nb.slotTypeId, nb.agencyId ?? null, nb.customerName, nb.customerPhone ?? '',
-    nb.partySize, nb.totalAmount, nb.paymentMethod, nb.notes ?? '', nb.createdBy, nowIso(),
+    nb.planId, nb.date, nb.slotTypeId, nb.agencyId ?? null, nb.status ?? 'confirmed', nb.customerName, nb.customerPhone ?? '',
+    nb.numAdults, nb.numChildren, nb.priceAdult, nb.priceChild,
+    partySize, nb.totalAmount, nb.paymentMethod, nb.notes ?? '', nb.createdBy, nowIso(),
     ...cond.params
   ).run();
 
@@ -56,7 +61,8 @@ export interface BookingChange {
   planId: number;
   date: string;
   slotTypeId: number;
-  partySize: number;
+  numAdults: number;
+  numChildren: number;
   totalAmount?: number;
   notes?: string;
 }
@@ -64,14 +70,15 @@ export interface BookingChange {
 // 変更後の枠の空き条件（自分自身を除外して評価）をWHERE句に含めた1文のUPDATE。
 // 条件を満たさなければ meta.changes = 0 で元の行は無変更のまま残る。
 export async function changeBooking(db: D1Database, bookingId: number, ch: BookingChange): Promise<BookingResult> {
-  const cond = slotOpenCond(ch, bookingId);
+  const partySize = ch.numAdults + ch.numChildren;
+  const cond = slotOpenCond({ planId: ch.planId, date: ch.date, slotTypeId: ch.slotTypeId, partySize }, bookingId);
   const res = await db.prepare(
     `UPDATE bookings
-     SET plan_id = ?, date = ?, slot_type_id = ?, party_size = ?,
+     SET plan_id = ?, date = ?, slot_type_id = ?, party_size = ?, num_adults = ?, num_children = ?,
          total_amount = COALESCE(?, total_amount), notes = COALESCE(?, notes)
      WHERE id = ? AND status = 'confirmed' AND ${cond.sql}`
   ).bind(
-    ch.planId, ch.date, ch.slotTypeId, ch.partySize,
+    ch.planId, ch.date, ch.slotTypeId, partySize, ch.numAdults, ch.numChildren,
     ch.totalAmount ?? null, ch.notes ?? null,
     bookingId, ...cond.params
   ).run();

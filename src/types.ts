@@ -6,6 +6,8 @@ export type Bindings = {
 
 export type PaymentMethod = 'onsite_cash' | 'onsite_card' | 'invoice' | 'stripe';
 
+export type BookingStatus = 'requested' | 'confirmed' | 'cancelled' | 'denied';
+
 export interface NewBooking {
   planId: number;
   date: string; // 'YYYY-MM-DD'
@@ -13,11 +15,15 @@ export interface NewBooking {
   agencyId?: number | null;
   customerName: string;
   customerPhone?: string;
-  partySize: number;
+  numAdults: number;
+  numChildren: number;
+  priceAdult: number;   // 予約時点の単価スナップショット
+  priceChild: number;
   totalAmount: number;
   paymentMethod: PaymentMethod;
   notes?: string;
   createdBy: 'admin' | 'agency';
+  status?: 'confirmed' | 'requested'; // 省略時 confirmed
 }
 
 export type BookingResult =

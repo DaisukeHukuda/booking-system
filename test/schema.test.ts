@@ -7,7 +7,7 @@ describe('schema', () => {
       `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name`
     ).all<{ name: string }>();
     expect(res.results.map((r) => r.name)).toEqual([
-      'agencies', 'bookings', 'email_log', 'plan_resources',
+      'agencies', 'bookings', 'capacity_overrides', 'email_log', 'plan_resources',
       'plan_slots', 'plans', 'resources', 'slot_closures', 'slot_types'
     ]);
   });
