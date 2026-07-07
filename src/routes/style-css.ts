@@ -379,4 +379,11 @@ a.cal-cell:hover { background: #eef3f9; }
 @media (max-width: 480px) {
   .nav a { padding: 0 9px; font-size: 12.5px; }
 }
+
+/* ---------- print (本日の台帳) ---------- */
+@media print {
+  .site-header, .cal-nav, .no-print { display: none !important; }
+  body { background: #fff; }
+  .page { max-width: none; padding: 0; }
+}
 `;

@@ -219,6 +219,21 @@ interface LedgerRow {
   agency_name: string | null;
 }
 
+interface TodayRow {
+  id: number;
+  status: BookingStatus;
+  customer_name: string;
+  customer_phone: string;
+  num_adults: number;
+  num_children: number;
+  notes: string;
+  plan_name: string;
+  slot_type_id: number;
+  slot_name: string;
+  slot_start_time: string;
+  agency_name: string | null;
+}
+
 function addDaysJst(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -341,6 +356,85 @@ lists.get('/ledger', async (c) => {
             </tbody>
           </table>
         </div>
+      )}
+    </Layout>
+  );
+});
+
+lists.get('/today', async (c) => {
+  const today = todayJst();
+
+  const result = await c.env.DB.prepare(
+    `SELECT b.id, b.status, b.customer_name, b.customer_phone, b.num_adults, b.num_children, b.notes,
+            p.name AS plan_name, st.id AS slot_type_id, st.name AS slot_name, st.start_time AS slot_start_time,
+            a.name AS agency_name
+     FROM bookings b
+     JOIN plans p ON p.id = b.plan_id
+     JOIN slot_types st ON st.id = b.slot_type_id
+     LEFT JOIN agencies a ON a.id = b.agency_id
+     WHERE b.date = ? AND b.status IN ('confirmed', 'requested')
+     ORDER BY st.sort_order, st.id, b.created_at`
+  ).bind(today).all<TodayRow>();
+  const rows = result.results;
+
+  const groups: { slotTypeId: number; slotName: string; startTime: string; totalPax: number; rows: TodayRow[] }[] = [];
+  const groupByKey = new Map<number, (typeof groups)[number]>();
+  for (const row of rows) {
+    let group = groupByKey.get(row.slot_type_id);
+    if (!group) {
+      group = { slotTypeId: row.slot_type_id, slotName: row.slot_name, startTime: row.slot_start_time, totalPax: 0, rows: [] };
+      groupByKey.set(row.slot_type_id, group);
+      groups.push(group);
+    }
+    group.totalPax += row.num_adults + row.num_children;
+    group.rows.push(row);
+  }
+
+  return c.html(
+    <Layout title="本日の台帳" active="/admin/today">
+      <div class="page-head">
+        <span class="eyebrow">Today</span>
+        <h1>本日の台帳</h1>
+        <span class="sub">
+          {today}　<a href={`/admin/day/${today}`}>日別詳細へ</a>
+        </span>
+        <div class="header-actions">
+          <button class="btn no-print" onclick="window.print()" type="button">
+            印刷
+          </button>
+        </div>
+      </div>
+
+      {groups.length === 0 ? (
+        <p>本日の予約はありません</p>
+      ) : (
+        groups.map((g) => (
+          <div class="card card-pad" style="margin-bottom:16px">
+            <h2>
+              {g.slotName} {g.startTime}{' '}
+              <span class="muted small">
+                {g.rows.length}件・{g.totalPax}名
+              </span>
+            </h2>
+            {g.rows.map((b) => (
+              <div class="roster-row" style="border-bottom:1px dotted var(--line-soft); padding:10px 0">
+                <div style="font-size:18px; font-weight:700">
+                  {b.customer_name}
+                  {b.status === 'requested' && (
+                    <>
+                      {' '}
+                      <span class={`badge ${BOOKING_BADGE_CLASSES[b.status]}`}>{BOOKING_STATUS_LABELS[b.status]}</span>
+                    </>
+                  )}
+                </div>
+                <div class="muted small">
+                  電話: {b.customer_phone}　人数: 大{b.num_adults} 小{b.num_children}　プラン: {b.plan_name}　経路: {b.agency_name ?? '自社'}
+                </div>
+                {b.notes && <div class="muted small">備考: {b.notes}</div>}
+              </div>
+            ))}
+          </div>
+        ))
       )}
     </Layout>
   );
