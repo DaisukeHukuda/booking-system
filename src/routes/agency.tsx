@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Child } from 'hono/jsx';
 import { getAvailability } from '../core/availability';
 import { createBooking, cancelBookingForAgency } from '../core/booking';
+import { sendBookingNotification } from '../core/notify';
 import type { Bindings, PaymentMethod } from '../types';
 import { BOOKING_STATUS_LABELS } from './admin/ui';
 
@@ -343,6 +344,7 @@ agency.post('/:token/bookings', async (c) => {
   });
 
   if (!result.ok) return c.redirect(`/a/${token}?error=unavailable`);
+  await sendBookingNotification(c.env.DB, c.env, result.bookingId, status === 'requested' ? 'requested' : 'created');
   return c.redirect(`/a/${token}?${status === 'requested' ? 'ok=requested' : 'ok=created'}`);
 });
 
@@ -353,6 +355,7 @@ agency.post('/:token/bookings/:id/cancel', async (c) => {
 
   const id = parsePositiveInt(c.req.param('id'));
   const ok = id !== null && (await cancelBookingForAgency(c.env.DB, id, a.id));
+  if (ok && id !== null) await sendBookingNotification(c.env.DB, c.env, id, 'cancelled');
 
   return c.redirect(`/a/${token}?${ok ? 'ok=cancelled' : 'error=invalid'}`);
 });

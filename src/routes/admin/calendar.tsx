@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { getAvailability } from '../../core/availability';
 import { createBooking, cancelBooking, changeBooking, approveBooking, denyBooking } from '../../core/booking';
+import { sendBookingNotification } from '../../core/notify';
 import type { Bindings, BookingStatus, PaymentMethod, SlotAvailability } from '../../types';
 import { Layout, STATUS_LABELS, STATUS_CLASSES, BOOKING_STATUS_LABELS, PAYMENT_LABELS } from './ui';
 
@@ -89,14 +90,16 @@ calendar.get('/', async (c) => {
   const from = `${month}-01`;
   const to = `${month}-${pad2(lastDay)}`;
 
-  const [availability, slotTypesResult] = await Promise.all([
+  const [availability, slotTypesResult, emailErrorResult] = await Promise.all([
     getAvailability(c.env.DB, from, to),
     c.env.DB.prepare('SELECT id, name FROM slot_types ORDER BY sort_order, id').all<{
       id: number;
       name: string;
-    }>()
+    }>(),
+    c.env.DB.prepare(`SELECT COUNT(*) AS n FROM email_log WHERE status = 'error'`).first<{ n: number }>()
   ]);
   const slotTypes = slotTypesResult.results;
+  const emailErrorCount = emailErrorResult?.n ?? 0;
 
   // date|slotTypeId -> availability entries
   const bySlot = new Map<string, SlotAvailability[]>();
@@ -132,6 +135,9 @@ calendar.get('/', async (c) => {
 
   return c.html(
     <Layout title="予約台帳">
+      {emailErrorCount >= 1 && (
+        <p class="msg-error">メール送信エラーが{emailErrorCount}件あります（email_logを確認してください）</p>
+      )}
       <h1>
         {year}年{monthNum}月
       </h1>
@@ -530,6 +536,7 @@ calendar.post('/bookings', async (c) => {
   });
 
   if (!result.ok) return c.redirect(`/admin/day/${date}?error=unavailable`);
+  await sendBookingNotification(c.env.DB, c.env, result.bookingId, 'created');
   return c.redirect(`/admin/day/${date}?ok=created`);
 });
 
@@ -542,6 +549,7 @@ calendar.post('/bookings/:id/cancel', async (c) => {
   if (id === null) return c.redirect(`/admin/day/${date}?error=invalid`);
 
   const ok = await cancelBooking(c.env.DB, id);
+  if (ok) await sendBookingNotification(c.env.DB, c.env, id, 'cancelled');
   return c.redirect(`/admin/day/${date}?${ok ? 'ok=cancelled' : 'error=invalid'}`);
 });
 
@@ -555,6 +563,7 @@ calendar.post('/bookings/:id/approve', async (c) => {
   const back = resolveBack(form.back);
 
   const ok = id !== null && (await approveBooking(c.env.DB, id));
+  if (ok && id !== null) await sendBookingNotification(c.env.DB, c.env, id, 'approved');
   return c.redirect(`${back}?${ok ? 'ok=approved' : 'error=invalid'}`);
 });
 
@@ -564,6 +573,7 @@ calendar.post('/bookings/:id/deny', async (c) => {
   const back = resolveBack(form.back);
 
   const ok = id !== null && (await denyBooking(c.env.DB, id));
+  if (ok && id !== null) await sendBookingNotification(c.env.DB, c.env, id, 'denied');
   return c.redirect(`${back}?${ok ? 'ok=denied' : 'error=invalid'}`);
 });
 
@@ -722,6 +732,9 @@ calendar.post('/bookings/:id', async (c) => {
   });
 
   if (!result.ok) return c.redirect(`/admin/bookings/${id}/edit?error=unavailable`);
+
+  // 予約変更（このエンドポイント）はメール通知を送らない: 管理画面からの日付・人数・金額の
+  // 微調整は他の操作より頻度が高く、都度通知するとノイズになるため対象外とする。
 
   // 連絡先（氏名・電話）は在庫判定に影響しないため、changeBooking のアトミックUPDATEとは
   // 別に更新してよい。
