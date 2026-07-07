@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { passwordMatches, signSession, verifySession } from '../auth/session';
 import type { Bindings } from '../types';
 import { calendar } from './admin/calendar';
+import { plans } from './admin/plans';
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
@@ -63,4 +64,5 @@ admin.use('*', async (c, next) => {
 });
 
 // 注意: /plans や /settings のルータはこの行より前にマウントすること
+admin.route('/plans', plans);
 admin.route('/', calendar);
