@@ -724,6 +724,8 @@ calendar.post('/capacity', async (c) => {
   const planId = parsePositiveInt(form.plan_id);
   const slotTypeId = parsePositiveInt(form.slot_type_id);
   const capacityRaw = typeof form.capacity === 'string' ? form.capacity.trim() : '';
+  const back = resolveBack(form.back, `/admin/day/${date}`);
+  const okSuffix = back.includes('?') ? '&ok=capacity' : '?ok=capacity';
 
   if (!DATE_RE.test(date) || planId === null || slotTypeId === null) {
     return c.redirect('/admin');
@@ -733,7 +735,7 @@ calendar.post('/capacity', async (c) => {
     await c.env.DB.prepare(
       `DELETE FROM capacity_overrides WHERE date = ? AND plan_id = ? AND slot_type_id = ?`
     ).bind(date, planId, slotTypeId).run();
-    return c.redirect(`/admin/day/${date}?ok=capacity`);
+    return c.redirect(`${back}${okSuffix}`);
   }
 
   const capacity = parseNonNegativeInt(capacityRaw);
@@ -744,7 +746,7 @@ calendar.post('/capacity', async (c) => {
      ON CONFLICT(date, plan_id, slot_type_id) DO UPDATE SET capacity = excluded.capacity`
   ).bind(date, planId, slotTypeId, capacity).run();
 
-  return c.redirect(`/admin/day/${date}?ok=capacity`);
+  return c.redirect(`${back}${okSuffix}`);
 });
 
 calendar.get('/bookings/:id/edit', async (c) => {

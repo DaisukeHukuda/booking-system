@@ -8,6 +8,7 @@ import { lists } from './admin/lists';
 import { newBooking } from './admin/new-booking';
 import { plans } from './admin/plans';
 import { settings } from './admin/settings';
+import { slots } from './admin/slots';
 import { stats } from './admin/stats';
 
 const COOKIE_NAME = 'admin_session';
@@ -79,11 +80,12 @@ admin.use('*', async (c, next) => {
   await next();
 });
 
-// 注意: /plans や /settings や /agencies や /new のルータはこの行より前にマウントすること
+// 注意: /plans や /settings や /agencies や /new や /slots のルータはこの行より前にマウントすること
 admin.route('/plans', plans);
 admin.route('/settings', settings);
 admin.route('/agencies', agencies);
 admin.route('/stats', stats);
 admin.route('/new', newBooking);
+admin.route('/slots', slots);
 admin.route('/', lists);
 admin.route('/', calendar);
