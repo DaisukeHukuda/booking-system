@@ -6,6 +6,7 @@ import { agencies } from './admin/agencies';
 import { calendar } from './admin/calendar';
 import { plans } from './admin/plans';
 import { settings } from './admin/settings';
+import { stats } from './admin/stats';
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30日
@@ -69,4 +70,5 @@ admin.use('*', async (c, next) => {
 admin.route('/plans', plans);
 admin.route('/settings', settings);
 admin.route('/agencies', agencies);
+admin.route('/stats', stats);
 admin.route('/', calendar);

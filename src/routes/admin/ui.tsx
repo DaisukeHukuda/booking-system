@@ -33,6 +33,7 @@ export const Layout = (props: { title: string; children: Child }) => (
           <a href="/admin/requests">承認待ち</a>
           <a href="/admin/plans">プラン</a>
           <a href="/admin/agencies">代理店</a>
+          <a href="/admin/stats">集計</a>
           <a href="/admin/settings">設定</a>
           <form method="post" action="/admin/logout">
             <button type="submit">ログアウト</button>
