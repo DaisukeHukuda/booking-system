@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import type { Bindings } from '../../types';
 import { Layout } from './ui';
+import { todayJst } from './util';
+import { datesBetween } from '../../core/availability';
 
 export const plans = new Hono<{ Bindings: Bindings }>();
 
@@ -9,7 +11,8 @@ const OK_MESSAGES: Record<string, string> = {
   updated: 'プランを更新しました',
   copied: 'コースを複製しました（無効状態）',
   archived: 'コースをアーカイブしました',
-  restored: 'コースを復帰しました'
+  restored: 'コースを復帰しました',
+  '1': '料金カレンダーを更新しました'
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -41,6 +44,10 @@ function parseOptionalNonNegativeInt(v: unknown): number | null | typeof INVALID
   if (typeof v !== 'string' || v.trim() === '') return null;
   const n = Number(v);
   return Number.isInteger(n) && n >= 0 ? n : INVALID;
+}
+
+function isValidDate(v: unknown): v is string {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
 function parseOptionalTime(v: unknown): string | null | typeof INVALID {
@@ -161,6 +168,9 @@ plans.get('/', async (c) => {
                 <td data-label="" class="actions">
                   <a class="btn btn-sm" href={`/admin/plans/${p.id}/edit`}>
                     編集
+                  </a>
+                  <a class="btn btn-sm" href={`/admin/plans/${p.id}/prices`}>
+                    料金カレンダー
                   </a>
                   <form method="post" action={`/admin/plans/${p.id}/copy`} style="display:inline">
                     <button class="btn btn-sm" type="submit">
@@ -296,7 +306,7 @@ plans.get('/:id/edit', async (c) => {
         <span class="eyebrow">Plans / Edit</span>
         <h1>プラン編集</h1>
         <span class="sub">
-          <a href="/admin/plans">&laquo; プラン一覧に戻る</a>
+          <a href="/admin/plans">&laquo; プラン一覧に戻る</a> ・ <a href={`/admin/plans/${plan.id}/prices`}>料金カレンダー</a>
         </span>
       </div>
       {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
@@ -590,4 +600,154 @@ plans.post('/:id/restore', async (c) => {
   await c.env.DB.prepare('UPDATE plans SET active = 1 WHERE id = ?').bind(id).run();
 
   return c.redirect('/admin/plans?ok=restored');
+});
+
+const MAX_PRICE_SPAN_DAYS = 31;
+
+interface PriceOverrideRow {
+  date: string;
+  price_adult: number;
+  price_child: number;
+}
+
+plans.get('/:id/prices', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  const plan = await c.env.DB.prepare('SELECT * FROM plans WHERE id = ?').bind(id).first<PlanRow>();
+  if (!plan) return c.redirect('/admin/plans');
+
+  const overridesResult = await c.env.DB.prepare(
+    `SELECT date, price_adult, price_child FROM price_overrides WHERE plan_id = ? AND date >= ? ORDER BY date ASC`
+  ).bind(id, todayJst()).all<PriceOverrideRow>();
+
+  const okParam = c.req.query('ok');
+  const errorParam = c.req.query('error');
+
+  return c.html(
+    <Layout title="料金カレンダー" active="/admin/plans">
+      <div class="page-head">
+        <span class="eyebrow">Plans / Prices</span>
+        <h1>{plan.name} 料金カレンダー</h1>
+        <span class="sub">
+          <a href="/admin/plans">&laquo; プラン一覧に戻る</a>
+        </span>
+      </div>
+      {okParam && OK_MESSAGES[okParam] && <p class="msg-ok">{OK_MESSAGES[okParam]}</p>}
+      {errorParam && ERROR_MESSAGES[errorParam] && <p class="msg-error">{ERROR_MESSAGES[errorParam]}</p>}
+
+      <p>
+        基本単価: 大人 {plan.price_adult}円 / 小人 {plan.price_child}円
+      </p>
+
+      <h2>期間指定で登録</h2>
+      <form class="card card-pad" method="post" action={`/admin/plans/${plan.id}/prices`}>
+        <div class="form-grid">
+          <div class="field">
+            <label>開始日</label>
+            <input type="date" name="from" required />
+          </div>
+          <div class="field">
+            <label>終了日</label>
+            <input type="date" name="to" required />
+          </div>
+          <div class="field">
+            <label>大人料金（円）</label>
+            <input type="number" name="price_adult" min="0" value={plan.price_adult} />
+          </div>
+          <div class="field">
+            <label>小人料金（円）</label>
+            <input type="number" name="price_child" min="0" value={plan.price_child} />
+          </div>
+          <button class="btn btn-primary" type="submit">
+            登録
+          </button>
+        </div>
+      </form>
+
+      <h2>登録済み（本日以降）</h2>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th class="r">大人</th>
+              <th class="r">小人</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {overridesResult.results.map((o) => (
+              <tr>
+                <td data-label="日付">{o.date}</td>
+                <td data-label="大人" class="num r">
+                  {o.price_adult}
+                </td>
+                <td data-label="小人" class="num r">
+                  {o.price_child}
+                </td>
+                <td data-label="" class="actions">
+                  <form method="post" action={`/admin/plans/${plan.id}/prices/delete`} style="display:inline">
+                    <input type="hidden" name="date" value={o.date} />
+                    <button class="btn btn-sm" type="submit">
+                      削除
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Layout>
+  );
+});
+
+plans.post('/:id/prices', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  const body = await c.req.parseBody();
+  const from = body.from;
+  const to = body.to;
+  const priceAdult = parseNonNegativeInt(body.price_adult);
+  const priceChild = parseNonNegativeInt(body.price_child);
+
+  if (!isValidDate(from) || !isValidDate(to) || from > to || priceAdult === null || priceChild === null) {
+    return c.redirect(`/admin/plans/${id}/prices?error=invalid`);
+  }
+
+  const dates = datesBetween(from, to);
+  if (dates.length > MAX_PRICE_SPAN_DAYS) {
+    return c.redirect(`/admin/plans/${id}/prices?error=invalid`);
+  }
+
+  await c.env.DB.batch(
+    dates.map((date) =>
+      c.env.DB.prepare(
+        `INSERT INTO price_overrides (date, plan_id, price_adult, price_child) VALUES (?, ?, ?, ?)
+         ON CONFLICT(date, plan_id) DO UPDATE SET
+           price_adult = excluded.price_adult,
+           price_child = excluded.price_child`
+      ).bind(date, id, priceAdult, priceChild)
+    )
+  );
+
+  return c.redirect(`/admin/plans/${id}/prices?ok=1`);
+});
+
+plans.post('/:id/prices/delete', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  const body = await c.req.parseBody();
+  const date = body.date;
+
+  if (!isValidDate(date)) {
+    return c.redirect(`/admin/plans/${id}/prices?error=invalid`);
+  }
+
+  await c.env.DB.prepare('DELETE FROM price_overrides WHERE plan_id = ? AND date = ?').bind(id, date).run();
+
+  return c.redirect(`/admin/plans/${id}/prices?ok=1`);
 });
