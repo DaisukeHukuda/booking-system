@@ -270,9 +270,10 @@ calendar.get('/day/:date', async (c) => {
       id: number;
       name: string;
     }>(),
-    c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
+    c.env.DB.prepare('SELECT id, name, short_name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
       id: number;
       name: string;
+      short_name: string;
     }>(),
     c.env.DB.prepare(
       `SELECT b.*, p.name AS plan_name, st.name AS slot_name, a.name AS agency_name
@@ -339,7 +340,7 @@ calendar.get('/day/:date', async (c) => {
             <tr>
               <th>時間帯</th>
               {plans.map((p) => (
-                <th>{p.name}</th>
+                <th>{p.short_name || p.name}</th>
               ))}
             </tr>
           </thead>

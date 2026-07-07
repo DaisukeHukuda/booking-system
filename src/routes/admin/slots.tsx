@@ -45,9 +45,10 @@ slots.get('/', async (c) => {
 
   const [availability, plansResult, slotTypesResult, planClosuresResult] = await Promise.all([
     getAvailability(c.env.DB, from, to),
-    c.env.DB.prepare('SELECT id, name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
+    c.env.DB.prepare('SELECT id, name, short_name FROM plans WHERE active = 1 ORDER BY sort_order, id').all<{
       id: number;
       name: string;
+      short_name: string;
     }>(),
     c.env.DB.prepare('SELECT id, name, start_time FROM slot_types ORDER BY sort_order, id').all<{
       id: number;
@@ -122,7 +123,7 @@ slots.get('/', async (c) => {
                 .map((st) => (
                   <tr>
                     <th class="plan-name">
-                      {p.name}
+                      {p.short_name || p.name}
                       <br />
                       <span class="time">{st.name}</span>
                     </th>

@@ -6,7 +6,10 @@ export const plans = new Hono<{ Bindings: Bindings }>();
 
 const OK_MESSAGES: Record<string, string> = {
   created: 'プランを作成しました',
-  updated: 'プランを更新しました'
+  updated: 'プランを更新しました',
+  copied: 'コースを複製しました（無効状態）',
+  archived: 'コースをアーカイブしました',
+  restored: 'コースを復帰しました'
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -25,6 +28,26 @@ function parsePositiveInt(v: unknown): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+const INVALID = Symbol('invalid');
+
+// 空文字は null（未設定）に、非空なら妥当性を検証する。不正値は INVALID を返す。
+function parseOptionalPositiveInt(v: unknown): number | null | typeof INVALID {
+  if (typeof v !== 'string' || v.trim() === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 ? n : INVALID;
+}
+
+function parseOptionalNonNegativeInt(v: unknown): number | null | typeof INVALID {
+  if (typeof v !== 'string' || v.trim() === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? n : INVALID;
+}
+
+function parseOptionalTime(v: unknown): string | null | typeof INVALID {
+  if (typeof v !== 'string' || v.trim() === '') return null;
+  return /^\d{2}:\d{2}$/.test(v) ? v : INVALID;
+}
+
 function toIdArray(v: unknown): number[] {
   const values = Array.isArray(v) ? v : v === undefined ? [] : [v];
   return values
@@ -35,6 +58,7 @@ function toIdArray(v: unknown): number[] {
 interface PlanRow {
   id: number;
   name: string;
+  short_name: string;
   description: string;
   price_adult: number;
   price_child: number;
@@ -103,6 +127,7 @@ plans.get('/', async (c) => {
           <thead>
             <tr>
               <th>名前</th>
+              <th>略称</th>
               <th class="r">大人</th>
               <th class="r">小人</th>
               <th class="r">所要</th>
@@ -116,6 +141,7 @@ plans.get('/', async (c) => {
             {planRows.map((p) => (
               <tr class={p.active ? undefined : 'row-muted'}>
                 <td data-label="名前">{p.name}</td>
+                <td data-label="略称">{p.short_name}</td>
                 <td data-label="大人" class="num r">
                   {p.price_adult}
                 </td>
@@ -136,6 +162,24 @@ plans.get('/', async (c) => {
                   <a class="btn btn-sm" href={`/admin/plans/${p.id}/edit`}>
                     編集
                   </a>
+                  <form method="post" action={`/admin/plans/${p.id}/copy`} style="display:inline">
+                    <button class="btn btn-sm" type="submit">
+                      複製
+                    </button>
+                  </form>
+                  {p.active ? (
+                    <form method="post" action={`/admin/plans/${p.id}/archive`} style="display:inline">
+                      <button class="btn btn-sm" type="submit">
+                        アーカイブ
+                      </button>
+                    </form>
+                  ) : (
+                    <form method="post" action={`/admin/plans/${p.id}/restore`} style="display:inline">
+                      <button class="btn btn-sm" type="submit">
+                        復帰
+                      </button>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}
@@ -149,6 +193,10 @@ plans.get('/', async (c) => {
           <div class="field">
             <label>名前</label>
             <input type="text" name="name" required />
+          </div>
+          <div class="field">
+            <label>略称</label>
+            <input type="text" name="short_name" />
           </div>
           <div class="field">
             <label>大人料金（円）</label>
@@ -174,6 +222,7 @@ plans.get('/', async (c) => {
 plans.post('/', async (c) => {
   const form = await c.req.parseBody();
   const name = typeof form.name === 'string' ? form.name.trim() : '';
+  const shortName = typeof form.short_name === 'string' ? form.short_name.trim() : '';
   const priceAdult = parseNonNegativeInt(form.price_adult);
   const priceChild = parseNonNegativeInt(form.price_child);
   const durationMin = parsePositiveInt(form.duration_min);
@@ -183,9 +232,9 @@ plans.post('/', async (c) => {
   }
 
   await c.env.DB.prepare(
-    `INSERT INTO plans (name, price_adult, price_child, duration_min, sort_order) VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
+    `INSERT INTO plans (name, short_name, price_adult, price_child, duration_min, sort_order) VALUES (?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
   )
-    .bind(name, priceAdult, priceChild, durationMin)
+    .bind(name, shortName, priceAdult, priceChild, durationMin)
     .run();
 
   return c.redirect('/admin/plans?ok=created');
@@ -202,9 +251,14 @@ plans.get('/:id/edit', async (c) => {
     c.env.DB.prepare('SELECT resource_id FROM plan_resources WHERE plan_id = ?').bind(id).all<{
       resource_id: number;
     }>(),
-    c.env.DB.prepare('SELECT slot_type_id, capacity, active FROM plan_slots WHERE plan_id = ?').bind(id).all<{
+    c.env.DB.prepare(
+      'SELECT slot_type_id, capacity, capacity_weekend, deadline_days, deadline_time, active FROM plan_slots WHERE plan_id = ?'
+    ).bind(id).all<{
       slot_type_id: number;
       capacity: number;
+      capacity_weekend: number | null;
+      deadline_days: number | null;
+      deadline_time: string | null;
       active: number;
     }>()
   ]);
@@ -214,9 +268,24 @@ plans.get('/:id/edit', async (c) => {
   const resources = resourcesResult.results;
   const slotTypes = slotTypesResult.results;
   const assignedResourceIds = new Set(planResourcesResult.results.map((r) => r.resource_id));
-  const planSlotById = new Map<number, { capacity: number; active: number }>();
+  const planSlotById = new Map<
+    number,
+    {
+      capacity: number;
+      capacity_weekend: number | null;
+      deadline_days: number | null;
+      deadline_time: string | null;
+      active: number;
+    }
+  >();
   for (const ps of planSlotsResult.results) {
-    planSlotById.set(ps.slot_type_id, { capacity: ps.capacity, active: ps.active });
+    planSlotById.set(ps.slot_type_id, {
+      capacity: ps.capacity,
+      capacity_weekend: ps.capacity_weekend,
+      deadline_days: ps.deadline_days,
+      deadline_time: ps.deadline_time,
+      active: ps.active
+    });
   }
 
   const errorParam = c.req.query('error');
@@ -237,6 +306,10 @@ plans.get('/:id/edit', async (c) => {
           <div class="field">
             <label>名前</label>
             <input type="text" name="name" value={plan.name} required />
+          </div>
+          <div class="field">
+            <label>略称</label>
+            <input type="text" name="short_name" value={plan.short_name} />
           </div>
           <div class="field">
             <label>大人料金（円）</label>
@@ -276,13 +349,16 @@ plans.get('/:id/edit', async (c) => {
         </div>
 
         <h3>時間帯ごとの催行と定員</h3>
-        <div class="tbl-wrap" style="max-width:520px">
+        <div class="tbl-wrap" style="max-width:820px">
           <table class="tbl">
             <thead>
               <tr>
                 <th>時間帯</th>
                 <th>催行</th>
                 <th>定員</th>
+                <th>週末定員</th>
+                <th>締切（日前）</th>
+                <th>締切時刻</th>
               </tr>
             </thead>
             <tbody>
@@ -308,6 +384,33 @@ plans.get('/:id/edit', async (c) => {
                         name={`slot_capacity_${st.id}`}
                         min="1"
                         value={current?.capacity ?? ''}
+                        class="w-sm"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        name={`slot_capacity_weekend_${st.id}`}
+                        min="1"
+                        value={current?.capacity_weekend ?? ''}
+                        placeholder="平日と同じ"
+                        class="w-sm"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        name={`slot_deadline_days_${st.id}`}
+                        min="0"
+                        value={current?.deadline_days ?? ''}
+                        class="w-sm"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="time"
+                        name={`slot_deadline_time_${st.id}`}
+                        value={current?.deadline_time ?? ''}
                         class="w-sm"
                       />
                     </td>
@@ -338,6 +441,7 @@ plans.post('/:id', async (c) => {
   const body = await c.req.parseBody({ all: true });
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const shortName = typeof body.short_name === 'string' ? body.short_name.trim() : '';
   const description = typeof body.description === 'string' ? body.description : '';
   const priceAdult = parseNonNegativeInt(body.price_adult);
   const priceChild = parseNonNegativeInt(body.price_child);
@@ -353,21 +457,36 @@ plans.post('/:id', async (c) => {
     return c.redirect(`/admin/plans/${id}/edit?error=invalid`);
   }
 
-  const slotCapacities = new Map<number, number>();
+  interface SlotConfig {
+    capacity: number;
+    capacityWeekend: number | null;
+    deadlineDays: number | null;
+    deadlineTime: string | null;
+  }
+
+  const slotConfigs = new Map<number, SlotConfig>();
   for (const slotTypeId of slotTypeIds) {
     if (body[`slot_active_${slotTypeId}`] !== undefined) {
       const capacity = parsePositiveInt(body[`slot_capacity_${slotTypeId}`]);
-      if (capacity === null) {
+      const capacityWeekend = parseOptionalPositiveInt(body[`slot_capacity_weekend_${slotTypeId}`]);
+      const deadlineDays = parseOptionalNonNegativeInt(body[`slot_deadline_days_${slotTypeId}`]);
+      const deadlineTime = parseOptionalTime(body[`slot_deadline_time_${slotTypeId}`]);
+      if (
+        capacity === null ||
+        capacityWeekend === INVALID ||
+        deadlineDays === INVALID ||
+        deadlineTime === INVALID
+      ) {
         return c.redirect(`/admin/plans/${id}/edit?error=invalid`);
       }
-      slotCapacities.set(slotTypeId, capacity);
+      slotConfigs.set(slotTypeId, { capacity, capacityWeekend, deadlineDays, deadlineTime });
     }
   }
 
   const statements = [
     c.env.DB.prepare(
-      `UPDATE plans SET name = ?, description = ?, price_adult = ?, price_child = ?, duration_min = ?, sort_order = ?, active = ? WHERE id = ?`
-    ).bind(name, description, priceAdult, priceChild, durationMin, sortOrder, active, id),
+      `UPDATE plans SET name = ?, short_name = ?, description = ?, price_adult = ?, price_child = ?, duration_min = ?, sort_order = ?, active = ? WHERE id = ?`
+    ).bind(name, shortName, description, priceAdult, priceChild, durationMin, sortOrder, active, id),
     c.env.DB.prepare(`DELETE FROM plan_resources WHERE plan_id = ?`).bind(id),
     ...resourceIds.map((resourceId) =>
       c.env.DB.prepare(`INSERT INTO plan_resources (plan_id, resource_id) VALUES (?, ?)`).bind(id, resourceId)
@@ -375,12 +494,19 @@ plans.post('/:id', async (c) => {
   ];
 
   for (const slotTypeId of slotTypeIds) {
-    if (slotCapacities.has(slotTypeId)) {
+    const cfg = slotConfigs.get(slotTypeId);
+    if (cfg) {
       statements.push(
         c.env.DB.prepare(
-          `INSERT INTO plan_slots (plan_id, slot_type_id, capacity, active) VALUES (?, ?, ?, 1)
-           ON CONFLICT(plan_id, slot_type_id) DO UPDATE SET capacity = excluded.capacity, active = 1`
-        ).bind(id, slotTypeId, slotCapacities.get(slotTypeId))
+          `INSERT INTO plan_slots (plan_id, slot_type_id, capacity, capacity_weekend, deadline_days, deadline_time, active)
+           VALUES (?, ?, ?, ?, ?, ?, 1)
+           ON CONFLICT(plan_id, slot_type_id) DO UPDATE SET
+             capacity = excluded.capacity,
+             capacity_weekend = excluded.capacity_weekend,
+             deadline_days = excluded.deadline_days,
+             deadline_time = excluded.deadline_time,
+             active = 1`
+        ).bind(id, slotTypeId, cfg.capacity, cfg.capacityWeekend, cfg.deadlineDays, cfg.deadlineTime)
       );
     } else {
       statements.push(
@@ -395,4 +521,73 @@ plans.post('/:id', async (c) => {
   await c.env.DB.batch(statements);
 
   return c.redirect('/admin/plans?ok=updated');
+});
+
+plans.post('/:id/copy', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  const plan = await c.env.DB.prepare('SELECT * FROM plans WHERE id = ?').bind(id).first<PlanRow>();
+  if (!plan) return c.redirect('/admin/plans');
+
+  const insertResult = await c.env.DB.prepare(
+    `INSERT INTO plans (name, short_name, description, price_adult, price_child, duration_min, active, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, 0, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM plans))`
+  )
+    .bind(`${plan.name} (コピー)`, plan.short_name, plan.description, plan.price_adult, plan.price_child, plan.duration_min)
+    .run();
+
+  const newId = insertResult.meta.last_row_id;
+
+  const [resourcesResult, slotsResult] = await Promise.all([
+    c.env.DB.prepare('SELECT resource_id FROM plan_resources WHERE plan_id = ?').bind(id).all<{
+      resource_id: number;
+    }>(),
+    c.env.DB.prepare(
+      'SELECT slot_type_id, capacity, capacity_weekend, deadline_days, deadline_time, active FROM plan_slots WHERE plan_id = ?'
+    ).bind(id).all<{
+      slot_type_id: number;
+      capacity: number;
+      capacity_weekend: number | null;
+      deadline_days: number | null;
+      deadline_time: string | null;
+      active: number;
+    }>()
+  ]);
+
+  const statements = [
+    ...resourcesResult.results.map((r) =>
+      c.env.DB.prepare('INSERT INTO plan_resources (plan_id, resource_id) VALUES (?, ?)').bind(newId, r.resource_id)
+    ),
+    ...slotsResult.results.map((s) =>
+      c.env.DB.prepare(
+        `INSERT INTO plan_slots (plan_id, slot_type_id, capacity, capacity_weekend, deadline_days, deadline_time, active)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).bind(newId, s.slot_type_id, s.capacity, s.capacity_weekend, s.deadline_days, s.deadline_time, s.active)
+    )
+  ];
+
+  if (statements.length > 0) {
+    await c.env.DB.batch(statements);
+  }
+
+  return c.redirect('/admin/plans?ok=copied');
+});
+
+plans.post('/:id/archive', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  await c.env.DB.prepare('UPDATE plans SET active = 0 WHERE id = ?').bind(id).run();
+
+  return c.redirect('/admin/plans?ok=archived');
+});
+
+plans.post('/:id/restore', async (c) => {
+  const id = parsePositiveInt(c.req.param('id'));
+  if (id === null) return c.redirect('/admin/plans');
+
+  await c.env.DB.prepare('UPDATE plans SET active = 1 WHERE id = ?').bind(id).run();
+
+  return c.redirect('/admin/plans?ok=restored');
 });
